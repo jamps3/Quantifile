@@ -130,12 +130,35 @@ class Quantifile(tk.Tk):
         self.canvas.bind("<Button-1>", self.on_click)
         self.canvas.bind("<Double-Button-1>", self.on_double_click)
         self.canvas.bind("<Motion>", self.on_motion)
+        self.canvas.bind("<Configure>", self.on_resize)
 
         self.bind("<BackSpace>", lambda e: self.zoom_out())
 
         self.selected_node = None
         self.scan_aborted = False
         self.nodes_scanned = 0
+        self._resize_job = None
+
+    def on_resize(self, event):
+        """Redraw treemap when window is resized (e.g., fullscreen toggle)."""
+        # Ignore resize events from the progress frame
+        if not hasattr(self, "canvas") or not hasattr(self, "current_node"):
+            return
+        if hasattr(self, "progress_frame") and self.progress_frame.winfo_ismapped():
+            return
+        if not self.current_node or self.scan_aborted:
+            return
+
+        # Debounce rapid resize events (e.g., during window drag)
+        if self._resize_job:
+            self.after_cancel(self._resize_job)
+        self._resize_job = self.after(100, self._do_resize_draw)
+
+    def _do_resize_draw(self):
+        """Perform the actual redraw after resize debounce."""
+        self._resize_job = None
+        if self.current_node and not self.scan_aborted:
+            self.draw()
 
     def choose_folder(self):
         path = filedialog.askdirectory(title="Select folder or drive")
