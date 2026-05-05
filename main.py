@@ -1,0 +1,551 @@
+import os
+import sys
+import math
+import json
+import threading
+import subprocess
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+
+
+class Node:
+    def __init__(self, path, is_dir):
+        self.path = path
+        self.name = os.path.basename(path) or path
+        self.is_dir = is_dir
+        self.size = 0
+        self.children = []
+
+
+def human_size(size):
+    units = ["B", "KB", "MB", "GB", "TB"]
+    value = float(size)
+
+    for unit in units:
+        if value < 1024:
+            return f"{value:.1f} {unit}"
+        value /= 1024
+
+    return f"{value:.1f} PB"
+
+
+def scan_path(path):
+    node = Node(path, os.path.isdir(path))
+
+    if not node.is_dir:
+        try:
+            node.size = os.path.getsize(path)
+        except OSError:
+            node.size = 0
+        return node
+
+    try:
+        entries = list(os.scandir(path))
+    except PermissionError:
+        return node
+    except OSError:
+        return node
+
+    for entry in entries:
+        try:
+            child = scan_path(entry.path)
+            node.children.append(child)
+            node.size += child.size
+        except OSError:
+            pass
+
+    node.children.sort(key=lambda n: n.size, reverse=True)
+    return node
+
+
+def treemap(nodes, x, y, w, h):
+    total = sum(n.size for n in nodes)
+
+    if total <= 0 or not nodes:
+        return []
+
+    result = []
+    horizontal = w >= h
+    offset = 0
+
+    for node in nodes:
+        ratio = node.size / total
+
+        if horizontal:
+            rw = w * ratio
+            result.append((node, x + offset, y, rw, h))
+            offset += rw
+        else:
+            rh = h * ratio
+            result.append((node, x, y + offset, w, rh))
+            offset += rh
+
+    return result
+
+
+class SpaceMongerClone(tk.Tk):
+    def __init__(self):
+        super().__init__()
+
+        self.title("Python SpaceMonger Clone")
+        self.geometry("1100x750")
+
+        self.root_node = None
+        self.current_node = None
+        self.rect_nodes = {}
+        self.dark_mode = False
+
+        self.load_settings()
+        self.create_ui()
+        self.apply_theme()
+
+    def create_ui(self):
+        toolbar = ttk.Frame(self)
+        toolbar.pack(fill="x")
+
+        ttk.Button(toolbar, text="Open Folder", command=self.choose_folder).pack(side="left", padx=4, pady=4)
+        ttk.Button(toolbar, text="Rescan", command=self.rescan).pack(side="left", padx=4, pady=4)
+        ttk.Button(toolbar, text="Zoom Out", command=self.zoom_out).pack(side="left", padx=4, pady=4)
+        ttk.Button(toolbar, text="Open Selected", command=self.open_selected).pack(side="left", padx=4, pady=4)
+        ttk.Button(toolbar, text="Delete Selected", command=self.delete_selected).pack(side="left", padx=4, pady=4)
+        ttk.Button(toolbar, text="Settings", command=self.show_settings).pack(side="right", padx=4, pady=4)
+
+        self.status = ttk.Label(toolbar, text="Choose a folder to scan")
+        self.status.pack(side="left", padx=10)
+
+        # Progress bar (initially hidden)
+        self.progress_frame = ttk.Frame(self)
+        self.progress = ttk.Progressbar(self.progress_frame, mode="determinate", maximum=100)
+        self.progress.pack(fill="x", padx=5, pady=2)
+        self.progress_label = ttk.Label(self.progress_frame, text="", anchor="center")
+        self.progress_label.pack(fill="x", padx=5)
+        self.cancel_button = ttk.Button(self.progress_frame, text="Cancel Scan", command=self.cancel_scan)
+        self.cancel_button.pack(pady=2)
+        self.progress_frame.pack_forget()
+
+        self.canvas = tk.Canvas(self, bg="white")
+        self.canvas.pack(fill="both", expand=True)
+
+        self.canvas.bind("<Button-1>", self.on_click)
+        self.canvas.bind("<Double-Button-1>", self.on_double_click)
+        self.canvas.bind("<Motion>", self.on_motion)
+
+        self.bind("<BackSpace>", lambda e: self.zoom_out())
+
+        self.selected_node = None
+        self.scan_aborted = False
+        self.nodes_scanned = 0
+
+    def choose_folder(self):
+        path = filedialog.askdirectory(title="Select folder or drive")
+        if path:
+            self.start_scan(path)
+
+    def cancel_scan(self):
+        self.scan_aborted = True
+        self.progress_label.config(text="Cancelling...")
+
+    def start_scan(self, path):
+        self.scan_aborted = False
+        self.nodes_scanned = 0
+        self.progress_frame.pack(fill="x", before=self.canvas)
+        self.progress["value"] = 0
+        self.progress_label.config(text="Scanning: 0 files...")
+        self.status.config(text=f"Scanning: {path}")
+        self.canvas.delete("all")
+
+        def worker():
+            node = self.scan_path_with_progress(path)
+            self.after(0, lambda: self.finish_scan(node))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def scan_path_with_progress(self, path):
+        """Scan with node counting and abort capability."""
+        node = Node(path, os.path.isdir(path))
+
+        if not node.is_dir:
+            try:
+                node.size = os.path.getsize(path)
+            except OSError:
+                node.size = 0
+            self.nodes_scanned += 1
+            self.after(0, lambda: self.progress_label.config(
+                text=f"Scanning: {self.nodes_scanned} items..."))
+            return node
+
+        try:
+            entries = list(os.scandir(path))
+        except PermissionError:
+            return node
+        except OSError:
+            return node
+
+        total = len(entries)
+        for i, entry in enumerate(entries):
+            if self.scan_aborted:
+                return node
+
+            try:
+                child = self.scan_path_with_progress(entry.path)
+                node.children.append(child)
+                node.size += child.size
+            except OSError:
+                pass
+
+            # Update progress every 10 items for performance
+            if i % 10 == 0:
+                self.nodes_scanned += 10
+                self.after(0, lambda n=self.nodes_scanned: self.progress_label.config(
+                    text=f"Scanning: {max(n, 1)} items..."))
+
+        node.children.sort(key=lambda n: n.size, reverse=True)
+        return node
+
+
+
+    def finish_scan(self, node):
+        self.progress_frame.pack_forget()
+        self.progress["value"] = 0
+        self.progress_label.config(text="")
+        
+        if self.scan_aborted:
+            self.status.config(text="Scan cancelled")
+            self.canvas.delete("all")
+            self.root_node = None
+            self.current_node = None
+            self.selected_node = None
+            return
+
+        self.root_node = node
+        self.current_node = node
+        self.selected_node = None
+        self.status.config(text=f"{node.path} — {human_size(node.size)}")
+        self.draw()
+
+    def rescan(self):
+        if self.root_node:
+            self.start_scan(self.root_node.path)
+
+    def draw(self):
+        self.canvas.delete("all")
+        self.rect_nodes.clear()
+
+        if not self.current_node:
+            return
+
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+
+        self.draw_node(self.current_node, 5, 5, width - 10, height - 10, depth=0)
+
+    def draw_node(self, node, x, y, w, h, depth):
+        if w < 2 or h < 2:
+            return
+
+        color = self.color_for_node(node, depth)
+
+        rect = self.canvas.create_rectangle(
+            x, y, x + w, y + h,
+            fill=color,
+            outline="black"
+        )
+
+        self.rect_nodes[rect] = node
+
+        if w > 70 and h > 25:
+            label = f"{node.name}\n{human_size(node.size)}"
+            self.canvas.create_text(
+                x + 4,
+                y + 4,
+                anchor="nw",
+                text=label,
+                fill="black",
+                font=("Segoe UI", 8)
+            )
+
+        if node.is_dir and node.children:
+            padding = 18 if w > 80 and h > 50 else 2
+            inner_x = x + 2
+            inner_y = y + padding
+            inner_w = max(1, w - 4)
+            inner_h = max(1, h - padding - 2)
+
+            visible_children = [c for c in node.children if c.size > 0]
+
+            for child, cx, cy, cw, ch in treemap(visible_children, inner_x, inner_y, inner_w, inner_h):
+                if cw >= 3 and ch >= 3:
+                    self.draw_node(child, cx, cy, cw, ch, depth + 1)
+
+    def load_settings(self):
+        try:
+            with open("settings.json", "r") as f:
+                self.settings = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.settings = {"dark_mode": False}
+        self.dark_mode = self.settings.get("dark_mode", False)
+
+    def save_settings(self):
+        with open("settings.json", "w") as f:
+            json.dump(self.settings, f)
+
+    def apply_theme(self):
+        if self.dark_mode:
+            # Dark theme
+            self.configure(bg="#1e1e1e")
+            self.canvas.configure(bg="#2d2d30")
+            self.style = ttk.Style()
+            self.style.configure("TFrame", background="#1e1e1e")
+            self.style.configure("TButton", background="#3c3c3c", foreground="#cccccc")
+            self.style.map("TButton", background=[("active", "#4a4a4a")])
+            self.style.configure("TLabel", background="#1e1e1e", foreground="#cccccc")
+        else:
+            # Light theme
+            self.configure(bg="#f0f0f0")
+            self.canvas.configure(bg="white")
+            self.style = ttk.Style()
+            self.style.configure("TFrame", background="#f0f0f0")
+            self.style.configure("TButton", background="#e0e0e0", foreground="black")
+            self.style.map("TButton", background=[("active", "#d0d0d0")])
+            self.style.configure("TLabel", background="#f0f0f0", foreground="black")
+
+    def toggle_dark_mode(self, enabled):
+        self.dark_mode = enabled
+        self.settings["dark_mode"] = enabled
+        self.save_settings()
+        self.apply_theme()
+        if self.current_node:
+            self.draw()
+
+    def show_settings(self):
+        settings_win = tk.Toplevel(self)
+        settings_win.title("Settings")
+        settings_win.geometry("400x300")
+        settings_win.transient(self)
+        settings_win.grab_set()
+        settings_win.resizable(False, False)
+
+        # Center the window
+        settings_win.update_idletasks()
+        width = settings_win.winfo_width()
+        height = settings_win.winfo_height()
+        x = (settings_win.winfo_screenwidth() // 2) - (width // 2)
+        y = (settings_win.winfo_screenheight() // 2) - (height // 2)
+        settings_win.geometry(f"+{x}+{y}")
+
+        main_frame = ttk.Frame(settings_win, padding=20)
+        main_frame.pack(fill="both", expand=True)
+
+        ttk.Label(main_frame, text="Appearance", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 10))
+
+        theme_frame = ttk.Frame(main_frame)
+        theme_frame.pack(fill="x", pady=(0, 20))
+
+        ttk.Label(theme_frame, text="Theme:").pack(side="left")
+
+        self.theme_var = tk.StringVar(value="light" if not self.dark_mode else "dark")
+
+        ttk.Radiobutton(theme_frame, text="Light", variable=self.theme_var, value="light",
+                       command=lambda: self.on_theme_change("light")).pack(side="left", padx=(10, 20))
+        ttk.Radiobutton(theme_frame, text="Dark", variable=self.theme_var, value="dark",
+                       command=lambda: self.on_theme_change("dark")).pack(side="left", padx=(0, 20))
+
+        ttk.Separator(main_frame, orient="horizontal").pack(fill="x", pady=20)
+
+        info_text = (
+            "• Click rectangles to select items\n"
+            "• Double-click folders to zoom in\n"
+            "• Press Backspace or click Zoom Out to go up\n"
+            "• Click 'Open Selected' to open with default app\n"
+            "• Click 'Delete Selected' to delete (with confirmation)\n"
+            "• Hover over rectangles for details"
+        )
+        ttk.Label(main_frame, text="Usage Tips:", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        tips_label = ttk.Label(main_frame, text=info_text, justify="left")
+        tips_label.pack(anchor="w")
+
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill="x", pady=(20, 0))
+
+        ttk.Button(button_frame, text="Close", command=settings_win.destroy).pack(side="right")
+
+        settings_win.protocol("WM_DELETE_WINDOW", settings_win.destroy)
+
+    def on_theme_change(self, theme):
+        self.toggle_dark_mode(theme == "dark")
+
+    def color_for_node(self, node, depth):
+        if self.dark_mode:
+            if node.is_dir:
+                # Dark theme: blue-cyan tones
+                base = 60 - min(depth * 6, 40)
+                return f"#{base:02x}{120 + min(depth * 15, 80):02x}{200 + min(depth * 10, 55):02x}"
+            else:
+                # Dark theme: orange-coral tones
+                base = 220 + min(depth * 10, 35)
+                return f"#{255:02x}{base:02x}{100 + min(depth * 10, 55):02x}"
+        else:
+            if node.is_dir:
+                # Light theme: teal/blue-green tones
+                base = 180 - min(depth * 14, 120)
+                return f"#{base:02x}{220:02x}{255:02x}"
+            else:
+                # Light theme: coral/peach tones
+                base = 230 - min(depth * 10, 120)
+                return f"#{255:02x}{base:02x}{120:02x}"
+
+    def draw_node(self, node, x, y, w, h, depth):
+        if w < 2 or h < 2:
+            return
+
+        color = self.color_for_node(node, depth)
+
+        # Highlight selected node with a contrasting border
+        outline_color = "#ffcc00" if (self.selected_node and node.path == self.selected_node.path) else ("#666666" if self.dark_mode else "black")
+        outline_width = 3 if (self.selected_node and node.path == self.selected_node.path) else 1
+
+        rect = self.canvas.create_rectangle(
+            x, y, x + w, y + h,
+            fill=color,
+            outline=outline_color,
+            width=outline_width
+        )
+
+        self.rect_nodes[rect] = node
+
+        label_color = "white" if self.dark_mode else "black"
+
+        if w > 70 and h > 25:
+            label = f"{node.name}\n{human_size(node.size)}"
+            self.canvas.create_text(
+                x + 4,
+                y + 4,
+                anchor="nw",
+                text=label,
+                fill=label_color,
+                font=("Segoe UI", 8)
+            )
+
+        if node.is_dir and node.children:
+            padding = 18 if w > 80 and h > 50 else 2
+            inner_x = x + 2
+            inner_y = y + padding
+            inner_w = max(1, w - 4)
+            inner_h = max(1, h - padding - 2)
+
+            visible_children = [c for c in node.children if c.size > 0]
+
+            for child, cx, cy, cw, ch in treemap(visible_children, inner_x, inner_y, inner_w, inner_h):
+                if cw >= 3 and ch >= 3:
+                    self.draw_node(child, cx, cy, cw, ch, depth + 1)
+
+    def node_at_event(self, event):
+        items = self.canvas.find_overlapping(event.x, event.y, event.x, event.y)
+
+        for item in reversed(items):
+            if item in self.rect_nodes:
+                return self.rect_nodes[item]
+
+        return None
+
+    def on_click(self, event):
+        node = self.node_at_event(event)
+
+        if node:
+            self.selected_node = node
+            self.status.config(text=f"{node.path} — {human_size(node.size)}")
+            self.draw()
+
+    def on_double_click(self, event):
+        node = self.node_at_event(event)
+
+        if node:
+            if node.is_dir:
+                self.current_node = node
+                self.selected_node = node
+                self.draw()
+                self.status.config(text=f"{node.path} — {human_size(node.size)}")
+            else:
+                self.selected_node = node
+                self.open_selected()
+
+    def on_motion(self, event):
+        node = self.node_at_event(event)
+
+        if node:
+            self.canvas.config(cursor="hand2")
+            self.status.config(text=f"{node.path} — {human_size(node.size)}")
+        else:
+            self.canvas.config(cursor="")
+
+    def zoom_out(self):
+        if not self.current_node or self.current_node == self.root_node:
+            return
+
+        parent_path = os.path.dirname(self.current_node.path)
+
+        def find_parent(node, target_parent):
+            if node.path == target_parent:
+                return node
+
+            for child in node.children:
+                found = find_parent(child, target_parent)
+                if found:
+                    return found
+
+            return None
+
+        parent = find_parent(self.root_node, parent_path)
+
+        if parent:
+            self.current_node = parent
+            self.selected_node = parent
+            self.draw()
+            self.status.config(text=f"{parent.path} — {human_size(parent.size)}")
+
+    def open_selected(self):
+        node = self.selected_node
+
+        if not node:
+            return
+
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(node.path)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", node.path])
+            else:
+                subprocess.Popen(["xdg-open", node.path])
+        except Exception as e:
+            messagebox.showerror("Open failed", str(e))
+
+    def delete_selected(self):
+        node = self.selected_node
+
+        if not node:
+            return
+
+        confirm = messagebox.askyesno(
+            "Delete",
+            f"Delete this item?\n\n{node.path}"
+        )
+
+        if not confirm:
+            return
+
+        try:
+            if node.is_dir:
+                import shutil
+                shutil.rmtree(node.path)
+            else:
+                os.remove(node.path)
+
+            self.rescan()
+
+        except Exception as e:
+            messagebox.showerror("Delete failed", str(e))
+
+
+if __name__ == "__main__":
+    app = SpaceMongerClone()
+    app.mainloop()
