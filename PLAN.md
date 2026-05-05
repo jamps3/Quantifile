@@ -101,11 +101,10 @@ Trade-off: Can produce high aspect ratio rectangles. Alternative: Squarified tre
 ## Known Issues & Limitations
 
 1. **Aspect Ratio**: Slice-and-dice produces elongated rectangles in unbalanced distributions
-2. **No Progress Indicator**: User sees only status text during scan
-3. **Single Scan Thread**: Cannot cancel or pause mid-scan
-4. **Memory Usage**: Entire tree kept in memory for navigation history
-5. **No Undo**: Delete operation is immediate (confirmation only)
-6. **Label Truncation**: Long names may overflow or be clipped
+2. **Memory Usage**: Entire tree kept in memory for navigation history
+3. **No Undo**: Delete operation is immediate (confirmation only)
+4. **Label Truncation**: Long names may overflow or be clipped
+5. **No Search/Filter**: Cannot search within directory contents
 
 ## Future Development Roadmap
 
@@ -114,6 +113,8 @@ Trade-off: Can produce high aspect ratio rectangles. Alternative: Squarified tre
 - Implement cancel/stop scan button ✅
 - Add minimum font size to prevent label overflow ✅
 - Show count of items in directories ✅
+- Quick Browse mode (fast preview without recursive scan) ✅
+- Auto-redraw on window resize / fullscreen toggle ✅
 
 ### Medium Term (Feature Additions)
 - Implement squarified treemap algorithm
