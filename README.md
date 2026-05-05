@@ -1,4 +1,4 @@
-# Python SpaceMonger Clone
+# Quantifile
 
 A disk space visualization tool inspired by the classic SpaceMonger application. This tool provides an interactive treemap visualization of directory contents, making it easy to identify large files and folders at a glance.
 
@@ -75,16 +75,16 @@ Represents a file or directory in the tree:
 - `size` — Size in bytes
 - `children` — List of child nodes (for directories)
 
-#### `human_size(size)`
+#### `human_size()`
 Formats a byte count into a human-readable string (e.g., "1.5 MB").
 
-#### `scan_path(path)`
+#### `scan_path()`
 Recursively scans a path and returns a `Node` tree. Handles permission errors gracefully.
 
-#### `treemap(nodes, x, y, w, h)`
+#### `treemap()`
 Computes treemap rectangles for a list of nodes within the given bounds using the slice-and-dice algorithm.
 
-#### `SpaceMongerClone` Class (Main Application)
+#### `Quantifile` Class (Main Application)
 Tkinter-based GUI with:
 - Toolbar with action buttons
 - Status bar showing current path and size

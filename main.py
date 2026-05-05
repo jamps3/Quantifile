@@ -83,7 +83,7 @@ def treemap(nodes, x, y, w, h):
     return result
 
 
-class SpaceMongerClone(tk.Tk):
+class Quantifile(tk.Tk):
     def __init__(self):
         super().__init__()
 
@@ -591,5 +591,5 @@ class SpaceMongerClone(tk.Tk):
 
 
 if __name__ == "__main__":
-    app = SpaceMongerClone()
+    app = Quantifile()
     app.mainloop()

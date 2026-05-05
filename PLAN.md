@@ -1,7 +1,7 @@
-# Development Plan - Python SpaceMonger Clone
+# Development Plan - Quantifile
 
 ## Overview
-This document outlines the implementation plan for the Python SpaceMonger Clone, a disk space visualization tool using treemaps.
+This document outlines the implementation plan for Quantifile, a disk space visualization tool using treemaps.
 
 ## Project Structure
 ```

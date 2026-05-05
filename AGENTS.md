@@ -1,9 +1,9 @@
-# Kilo Agent Configuration - Python SpaceMonger Clone
+# Kilo Agent Configuration - Quantifile
 
 ## Project Overview
 This project is a Python-based disk space visualization tool inspired by SpaceMonger. It uses a treemap layout to represent directory contents interactively.
 
-**Main File:** `main.py` (310 lines, single-file application)
+**Main File:** `main.py` (310 lines → 464 lines, single-file application)
 
 ## Architecture Summary
 
