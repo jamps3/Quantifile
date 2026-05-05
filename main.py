@@ -104,6 +104,7 @@ class Quantifile(tk.Tk):
         toolbar.pack(fill="x")
 
         ttk.Button(toolbar, text="Open Folder", command=self.choose_folder).pack(side="left", padx=4, pady=4)
+        ttk.Button(toolbar, text="Quick Browse", command=self.quick_browse).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Rescan", command=self.rescan).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Zoom Out", command=self.zoom_out).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Open Selected", command=self.open_selected).pack(side="left", padx=4, pady=4)
@@ -141,11 +142,18 @@ class Quantifile(tk.Tk):
         if path:
             self.start_scan(path)
 
+    def quick_browse(self):
+        """Quick browse mode: shallow scan, no size calculation for subdirs."""
+        path = filedialog.askdirectory(title="Select folder to quick browse")
+        if path:
+            self.start_quick_scan(path)
+
     def cancel_scan(self):
         self.scan_aborted = True
         self.progress_label.config(text="Cancelling...")
 
     def start_scan(self, path):
+        self.scan_type = "full"  # full or quick
         self.scan_aborted = False
         self.nodes_scanned = 0
         self.progress_frame.pack(fill="x", before=self.canvas)
@@ -166,6 +174,23 @@ class Quantifile(tk.Tk):
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def start_quick_scan(self, path):
+        """Quick scan: only top-level + immediate children, no recursive size calc."""
+        self.scan_type = "quick"
+        self.scan_aborted = False
+        self.nodes_scanned = 0
+        self.progress_frame.pack(fill="x", before=self.canvas)
+        self.progress["value"] = 0
+        self.progress_label.config(text="Quick scanning...")
+        self.status.config(text=f"Quick browse: {path}")
+        self.canvas.delete("all")
+
+        def worker():
+            node = self.quick_scan_path(path)
+            self.after(0, lambda: self.finish_scan(node))
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def count_items(self, path):
         """Quick pre-scan to count total filesystem items."""
         try:
@@ -180,6 +205,84 @@ class Quantifile(tk.Tk):
             return total
         except (PermissionError, OSError):
             return 1
+
+    def quick_scan_path(self, path):
+        """Quick scan: only top-level + immediate children.
+        Subdirectories get placeholder size (1 byte) for relative comparison.
+        Files get actual size.
+        """
+        node = Node(path, os.path.isdir(path))
+
+        if not node.is_dir:
+            try:
+                node.size = os.path.getsize(path)
+            except OSError:
+                node.size = 0
+            return node
+
+        # Top-level directory - get actual size only for files directly here
+        try:
+            entries = list(os.scandir(path))
+        except PermissionError:
+            return node
+        except OSError:
+            return node
+
+        for entry in entries:
+            if self.scan_aborted:
+                return node
+            try:
+                if entry.is_file(follow_symlinks=False):
+                    # Files: get actual size
+                    child = Node(entry.path, False)
+                    try:
+                        child.size = entry.stat().st_size
+                    except OSError:
+                        child.size = 0
+                    node.children.append(child)
+                    node.size += child.size
+                elif entry.is_dir(follow_symlinks=False):
+                    # Directories: placeholder size, will be visually distinguishable
+                    child = self.quick_scan_subdir(entry.path)
+                    node.children.append(child)
+                    node.size += child.size
+            except OSError:
+                pass
+
+        node.children.sort(key=lambda n: n.size, reverse=True)
+        return node
+
+    def quick_scan_subdir(self, path):
+        """For quick mode: scan only immediate children of a subdirectory.
+        Use small placeholder sizes so folders are visible but comparable.
+        """
+        node = Node(path, True)
+        try:
+            entries = list(os.scandir(path))
+        except PermissionError:
+            # Give directories a minimal placeholder so they appear
+            node.size = 1
+            return node
+        except OSError:
+            node.size = 1
+            return node
+
+        for entry in entries:
+            try:
+                if entry.is_file(follow_symlinks=False):
+                    try:
+                        node.size += entry.stat().st_size
+                    except OSError:
+                        pass
+                else:
+                    # Nested subdirs: minimal placeholder
+                    node.size += 1
+            except OSError:
+                pass
+
+        # Sort children by size if we have them
+        node.children.sort(key=lambda n: n.size, reverse=True) if node.children else None
+        return node
 
     def scan_path_with_progress(self, path):
         """Scan with node counting and abort capability."""
@@ -241,12 +344,16 @@ class Quantifile(tk.Tk):
         self.root_node = node
         self.current_node = node
         self.selected_node = None
-        self.status.config(text=f"{node.path} — {human_size(node.size)}")
+        scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
+        self.status.config(text=f"{scan_mode}: {node.path} — {human_size(node.size)}")
         self.draw()
 
     def rescan(self):
         if self.root_node:
-            self.start_scan(self.root_node.path)
+            if getattr(self, "scan_type", "full") == "quick":
+                self.start_quick_scan(self.root_node.path)
+            else:
+                self.start_scan(self.root_node.path)
 
     def draw(self):
         self.canvas.delete("all")
@@ -379,7 +486,8 @@ class Quantifile(tk.Tk):
             "• Press Backspace or click Zoom Out to go up\n"
             "• Click 'Open Selected' to open with default app\n"
             "• Click 'Delete Selected' to delete (with confirmation)\n"
-            "• Hover over rectangles for details"
+            "• Hover over rectangles for details\n"
+            "• Use 'Quick Browse' for fast directory preview (no recursive size calc)"
         )
         ttk.Label(main_frame, text="Usage Tips:", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 5))
         tips_label = ttk.Label(main_frame, text=info_text, justify="left")
@@ -497,7 +605,8 @@ class Quantifile(tk.Tk):
 
         if node:
             self.selected_node = node
-            self.status.config(text=f"{node.path} — {human_size(node.size)}")
+            scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
+            self.status.config(text=f"{scan_mode}: {node.path} — {human_size(node.size)}")
             self.draw()
 
     def on_double_click(self, event):
@@ -508,7 +617,8 @@ class Quantifile(tk.Tk):
                 self.current_node = node
                 self.selected_node = node
                 self.draw()
-                self.status.config(text=f"{node.path} — {human_size(node.size)}")
+                scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
+                self.status.config(text=f"{scan_mode}: {node.path} — {human_size(node.size)}")
             else:
                 self.selected_node = node
                 self.open_selected()
@@ -545,7 +655,8 @@ class Quantifile(tk.Tk):
             self.current_node = parent
             self.selected_node = parent
             self.draw()
-            self.status.config(text=f"{parent.path} — {human_size(parent.size)}")
+            scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
+            self.status.config(text=f"{scan_mode}: {parent.path} — {human_size(parent.size)}")
 
     def open_selected(self):
         node = self.selected_node
