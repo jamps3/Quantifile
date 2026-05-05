@@ -110,10 +110,10 @@ Trade-off: Can produce high aspect ratio rectangles. Alternative: Squarified tre
 ## Future Development Roadmap
 
 ### Short Term (Quick Wins)
-- Add scan progress indicator (progress bar or percentage)
-- Implement cancel/stop scan button
-- Add minimum font size to prevent label overflow
-- Show count of items in directories
+- Add scan progress indicator (progress bar or percentage) ✅
+- Implement cancel/stop scan button ✅
+- Add minimum font size to prevent label overflow ✅
+- Show count of items in directories ✅
 
 ### Medium Term (Feature Additions)
 - Implement squarified treemap algorithm

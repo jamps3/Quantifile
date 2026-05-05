@@ -87,7 +87,7 @@ class SpaceMongerClone(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.title("Python SpaceMonger Clone")
+        self.title("Quantifile")
         self.geometry("1100x750")
 
         self.root_node = None
@@ -150,15 +150,36 @@ class SpaceMongerClone(tk.Tk):
         self.nodes_scanned = 0
         self.progress_frame.pack(fill="x", before=self.canvas)
         self.progress["value"] = 0
-        self.progress_label.config(text="Scanning: 0 files...")
+        self.progress_label.config(text="Counting items...")
         self.status.config(text=f"Scanning: {path}")
         self.canvas.delete("all")
 
         def worker():
+            # Pre-count total items for progress display
+            total = self.count_items(path)
+            self.after(0, lambda: (
+                self.progress_label.config(text=f"Scanning: 0 / {total} items..."),
+                setattr(self, "total_items", total)
+            ))
             node = self.scan_path_with_progress(path)
             self.after(0, lambda: self.finish_scan(node))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def count_items(self, path):
+        """Quick pre-scan to count total filesystem items."""
+        try:
+            if not os.path.isdir(path):
+                return 1
+            total = 1  # count the root folder itself
+            with os.scandir(path) as it:
+                for entry in it:
+                    total += 1
+                    if entry.is_dir(follow_symlinks=False):
+                        total += self.count_items(entry.path)
+            return total
+        except (PermissionError, OSError):
+            return 1
 
     def scan_path_with_progress(self, path):
         """Scan with node counting and abort capability."""
@@ -171,7 +192,7 @@ class SpaceMongerClone(tk.Tk):
                 node.size = 0
             self.nodes_scanned += 1
             self.after(0, lambda: self.progress_label.config(
-                text=f"Scanning: {self.nodes_scanned} items..."))
+                text=f"Scanning: {self.nodes_scanned} / {getattr(self, 'total_items', '?')} items..."))
             return node
 
         try:
@@ -193,11 +214,11 @@ class SpaceMongerClone(tk.Tk):
             except OSError:
                 pass
 
-            # Update progress every 10 items for performance
-            if i % 10 == 0:
-                self.nodes_scanned += 10
+            # Update progress every 20 items for performance
+            if i % 20 == 0:
+                self.nodes_scanned += 20
                 self.after(0, lambda n=self.nodes_scanned: self.progress_label.config(
-                    text=f"Scanning: {max(n, 1)} items..."))
+                    text=f"Scanning: {max(n, 1)} / {getattr(self, 'total_items', '?')} items..."))
 
         node.children.sort(key=lambda n: n.size, reverse=True)
         return node
@@ -416,15 +437,38 @@ class SpaceMongerClone(tk.Tk):
         label_color = "white" if self.dark_mode else "black"
 
         if w > 70 and h > 25:
-            label = f"{node.name}\n{human_size(node.size)}"
-            self.canvas.create_text(
-                x + 4,
-                y + 4,
-                anchor="nw",
-                text=label,
-                fill=label_color,
-                font=("Segoe UI", 8)
-            )
+            # Build label with item count for directories
+            if node.is_dir and node.children:
+                item_count = len(node.children)
+                name_part = node.name
+                # Truncate long names
+                if len(name_part) > 16:
+                    name_part = name_part[:14] + ".."
+                label = f"{name_part}\n{human_size(node.size)}\n{item_count} item{'s' if item_count != 1 else ''}"
+            else:
+                name_part = node.name
+                if len(name_part) > 20:
+                    name_part = name_part[:18] + ".."
+                label = f"{name_part}\n{human_size(node.size)}"
+
+            # Adjust font size based on rectangle dimensions
+            # Base size 8, shrink if rectangle is small or label is long
+            base_size = 8
+            if node.is_dir and node.children:
+                # Multi-line label needs more space
+                font_size = max(5, min(base_size, int(h / 10), int(w / 15)))
+            else:
+                font_size = max(5, min(base_size, int(h / 8), int(w / (len(name_part) + 3))))
+
+            if font_size >= 5:
+                self.canvas.create_text(
+                    x + 4,
+                    y + 4,
+                    anchor="nw",
+                    text=label,
+                    fill=label_color,
+                    font=("Segoe UI", font_size)
+                )
 
         if node.is_dir and node.children:
             padding = 18 if w > 80 and h > 50 else 2
