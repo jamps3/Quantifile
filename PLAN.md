@@ -108,6 +108,9 @@ Trade-off: Can produce high aspect ratio rectangles. Alternative: Squarified tre
 
 ## Future Development Roadmap
 
+### Next Priority
+- **Multi-threaded parallel scanning**: Scan independent subdirectories concurrently to improve performance on large directory trees
+
 ### Short Term (Quick Wins)
 - Add scan progress indicator (progress bar or percentage) ✅
 - Implement cancel/stop scan button ✅
@@ -124,7 +127,6 @@ Trade-off: Can produce high aspect ratio rectangles. Alternative: Squarified tre
 - History/back navigation stack
 
 ### Long Term (Advanced Features)
-- Multi-threaded parallel scanning
 - Real-time filesystem monitoring (auto-update)
 - Custom color schemes and UI themes
 - Configuration file support

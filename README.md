@@ -125,7 +125,7 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 - The slice-and-dice algorithm can produce elongated rectangles; a squarified algorithm would produce better aspect ratios
 - No persistent history/bookmarks
 - No search or filter functionality
-- No visual indication of scan progress beyond the status text
+- Progress bar shows item count but may not accurately reflect actual scan progress on some systems
 
 ## Future Enhancements
 

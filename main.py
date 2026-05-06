@@ -333,12 +333,13 @@ class Quantifile(tk.Tk):
         try:
             if not os.path.isdir(path):
                 return 1
-            total = 1  # count the root folder itself
+            total = 1  # count the directory itself
             with os.scandir(path) as it:
                 for entry in it:
-                    total += 1
                     if entry.is_dir(follow_symlinks=False):
                         total += self.count_items(entry.path)
+                    else:
+                        total += 1
             return total
         except (PermissionError, OSError):
             return 1
@@ -435,6 +436,8 @@ class Quantifile(tk.Tk):
                 text=f"Scanning: {self.nodes_scanned} / {getattr(self, 'total_items', '?')} items..."))
             return node
 
+        self.nodes_scanned += 1
+
         try:
             entries = list(os.scandir(path))
         except PermissionError:
@@ -456,7 +459,6 @@ class Quantifile(tk.Tk):
 
             # Update progress every 20 items for performance
             if i % 20 == 0:
-                self.nodes_scanned += 20
                 self.after(0, lambda n=self.nodes_scanned: self.progress_label.config(
                     text=f"Scanning: {max(n, 1)} / {getattr(self, 'total_items', '?')} items..."))
 
