@@ -232,6 +232,8 @@ class Quantifile(tk.Tk):
         ttk.Button(toolbar, text="Quick Browse", command=self.quick_browse).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Rescan", command=self.rescan).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Zoom Out", command=self.zoom_out).pack(side="left", padx=4, pady=4)
+        self.quick_zoom_button = ttk.Button(toolbar, text="Quick Zoom (OFF)", command=self.toggle_quick_zoom)
+        self.quick_zoom_button.pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Open Selected", command=self.open_selected).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Delete Selected", command=self.delete_selected).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Show Free Space", command=self.show_free_space).pack(side="left", padx=4, pady=4)
@@ -282,6 +284,7 @@ class Quantifile(tk.Tk):
 
         self.canvas.bind("<Button-1>", self.on_click)
         self.canvas.bind("<Double-Button-1>", self.on_double_click)
+        self.canvas.bind("<Button-3>", self.on_right_click)
         self.canvas.bind("<Motion>", self.on_motion)
         self.canvas.bind("<Configure>", self.on_resize)
 
@@ -292,11 +295,15 @@ class Quantifile(tk.Tk):
         self.nodes_scanned = 0
         self._nodes_scanned_lock = threading.Lock()
         self._resize_job = None
-        
+
         # Search state
         self.search_matches = set()  # Set of node paths that match the current search
         self.current_search = ""
         self.search_active = False
+
+        # Right-click menu and toggle
+        self.quick_zoom_mode = False  # False = show menu, True = instant zoom out
+        self.context_menu = None
 
     def on_resize(self, event):
         """Redraw treemap when window is resized (e.g., fullscreen toggle)."""
@@ -1163,6 +1170,31 @@ class Quantifile(tk.Tk):
             self.status.config(text=f"{node.path} — {human_size(node.size)}")
         else:
             self.canvas.config(cursor="")
+
+    def toggle_quick_zoom(self):
+        self.quick_zoom_mode = not self.quick_zoom_mode
+        # Update button appearance to show state
+        if self.quick_zoom_mode:
+            self.quick_zoom_button.config(text="Quick Zoom (ON)")
+        else:
+            self.quick_zoom_button.config(text="Quick Zoom (OFF)")
+
+    def on_right_click(self, event):
+        if self.quick_zoom_mode:
+            self.zoom_out()
+        else:
+            self.show_context_menu(event)
+
+    def show_context_menu(self, event):
+        if not self.context_menu:
+            self.context_menu = tk.Menu(self, tearoff=0)
+            self.context_menu.add_command(label="Go Up", command=self.zoom_out)
+            # Could add more items here in the future
+
+        try:
+            self.context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self.context_menu.grab_release()
 
     def zoom_out(self):
         if not self.current_node or self.current_node == self.root_node:
