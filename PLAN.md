@@ -108,9 +108,6 @@ Trade-off: Can produce high aspect ratio rectangles. Alternative: Squarified tre
 
 ## Future Development Roadmap
 
-### Next Priority
-- **Multi-threaded parallel scanning**: Scan independent subdirectories concurrently to improve performance on large directory trees
-
 ### Short Term (Quick Wins)
 - Add scan progress indicator (progress bar or percentage) ✅
 - Implement cancel/stop scan button ✅
@@ -118,8 +115,14 @@ Trade-off: Can produce high aspect ratio rectangles. Alternative: Squarified tre
 - Show count of items in directories ✅
 - Quick Browse mode (fast preview without recursive scan) ✅
 - Auto-redraw on window resize / fullscreen toggle ✅
+- About dialog with logo ✅
+- Multi-threaded parallel scanning ✅
 
 ### Medium Term (Feature Additions)
+- Custom color settings dialog ✅
+- Show free space button ✅
+- Settings: Density, Disable delete, Remember window position, Animated zoom, Auto rescan ✅
+- Animated zoom in/out transitions (recursive after) ✅
 - Implement squarified treemap algorithm
 - Add search/filter by name, size, type
 - File type categorization with color coding
@@ -129,7 +132,7 @@ Trade-off: Can produce high aspect ratio rectangles. Alternative: Squarified tre
 ### Long Term (Advanced Features)
 - Real-time filesystem monitoring (auto-update)
 - Custom color schemes and UI themes
-- Configuration file support
+- Configuration file support for color preferences
 - Compare mode (side-by-side directory views)
 - Integration with system file manager
 

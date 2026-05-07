@@ -45,6 +45,8 @@ python main.py
 | **Zoom out (go up one level)** | Click "Zoom Out" button or press <kbd>Backspace</kbd> |
 | **Open selected item** | Click "Open Selected" button |
 | **Delete selected item** | Click "Delete Selected" button |
+| **About** | Click "About" button |
+| **Show free space** | Click "Show Free Space" button |
 | **Select item** | Click on a rectangle |
 | **Zoom into folder** | Double-click on a folder rectangle |
 | **Hover for info** | Move mouse over rectangles |
@@ -114,6 +116,7 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 - The UI gracefully handles zero-size or empty directories
 
 ### Performance Considerations
+- Multi-threaded scanning uses parallel processing for subdirectories
 - Nodes with `size == 0` are filtered out during treemap computation
 - Minimum rectangle sizes (3×3 pixels) prevent excessive recursion
 - Labels only render when there's sufficient space (>70×25 pixels)
@@ -121,7 +124,6 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 
 ## Limitations
 
-- Scanning is single-threaded per directory (no parallel scanning of subdirectories)
 - The slice-and-dice algorithm can produce elongated rectangles; a squarified algorithm would produce better aspect ratios
 - No persistent history/bookmarks
 - No search or filter functionality
@@ -131,7 +133,6 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 
 Potential improvements could include:
 - Squarified treemap algorithm for better aspect ratios
-- Parallel scanning of independent subdirectories
 - Search and filter by file name, type, or size
 - Visual indicators for recently modified or accessed files
 - Export visualization as image
