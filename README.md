@@ -27,7 +27,7 @@ A disk space visualization tool inspired by the classic SpaceMonger application.
 - **Animation Options**: Choose no animation, zoom animation, or collapse animation for treemap navigation
 - **Log Tab**: Scan warnings, permission errors, and operation results are recorded without disruptive popups
 - **Access-Denied Placeholders**: Inaccessible folders stay visible with a metadata-size or tiny placeholder block
-- **Recent Modified Indicators**: Files modified in the last hour get a strong badge; recent files get a subtler marker
+- **Visual indicators for recently modified or accessed files**: Files modified in the last hour get a strong badge; recent files get a subtler marker
 - **Dynamic UI**: Status text truncates based on window width, dialogs center properly
 - **Rescan**: Re-scan directories to reflect changes
 - **Cross-Platform**: Works on Windows, macOS, and Linux
@@ -200,7 +200,6 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 ## Future Enhancements
 
 Potential improvements could include:
-- Visual indicators for recently modified or accessed files
 - Bookmark favorite directories
 - Advanced search and filtering options
 - Undo/redo for file operations
