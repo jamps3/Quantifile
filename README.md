@@ -21,6 +21,7 @@ A disk space visualization tool inspired by the classic SpaceMonger application.
   - Delete files/folders with confirmation
 - **Free Space Visualization**: Toggle to show available drive space as a visual block
 - **Export**: Export current treemap as SVG with proper fonts and positioning
+- **Bookmarks**: Save favorite directories for instant access, with cached scan data for quick browsing
 - **Settings Persistence**: Remembers window position, fullscreen state, colors, fonts, and scan behavior
 - **Color Customization**: Customize colors for directories, files, selection, outlines, and labels with immediate application
 - **Font Customization**: Configure UI font size, heading size, and treemap label font sizing
@@ -69,12 +70,13 @@ python main.py
 | **Open selected item** | Click "Open Selected" button |
 | **Delete selected item** | Click "Delete Selected" button |
 | **Export SVG** | Click "Export SVG" button |
+| **Bookmarks** | Click "Bookmarks" button to open bookmarks tab |
 | **View log messages** | Open the "Log" tab |
 | **Settings** | Click "Settings" button |
 | **About** | Click "About" button |
 | **Select item** | Click on a rectangle |
 | **Hover for info** | Move mouse over rectangles |
-| **Right-click on item** | Opens context menu (Open file, Color, Properties*, Show in Explorer, Go Up) |
+| **Right-click on item** | Opens context menu (Open file, Color, Properties*, Show in Explorer, Go Up, Add to Bookmarks) |
 
 * Properties currently shows a placeholder dialog and can be expanded later with platform-specific support.
 
@@ -171,6 +173,8 @@ Tkinter-based GUI with:
 - `truncate_text()` — Truncates text to fit window width
 - `export_svg()` — Exports treemap as SVG
 - `show_settings()` — Tabbed appearance, font, behavior, and scan settings dialog
+- `add_current_to_bookmarks()` — Adds the current directory to bookmarks
+- `switch_to_bookmark(path)` — Switches treemap to show a bookmarked directory
 - `log_message()` — Records non-blocking information, warnings, and errors in the Log tab
 
 ## Implementation Details
@@ -200,7 +204,6 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 ## Future Enhancements
 
 Potential improvements could include:
-- Bookmark favorite directories
 - Advanced search and filtering options
 - Undo/redo for file operations
 - Multi-selection and batch operations

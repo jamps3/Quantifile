@@ -380,6 +380,10 @@ class ScanMixin:
         else:
             self.log_message("Scan completed with no inaccessible folders.", "INFO")
 
+        # Store scan data for bookmarks
+        if self.root_node and self.root_node.path in getattr(self, 'bookmarks', {}):
+            self.bookmarks[self.root_node.path] = self.root_node
+
     def rescan(self):
         if self.root_node:
             if getattr(self, "scan_type", "full") == "quick":

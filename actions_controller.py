@@ -256,6 +256,8 @@ class ActionsMixin:
             self.context_menu.add_separator()
             self.context_menu.add_command(label="Show in Explorer", command=self.open_in_manager)
             self.context_menu.add_command(label="Go Up", command=self.zoom_out)
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="Add to Bookmarks", command=self.add_current_to_bookmarks)
             # Could add more items here in the future
 
         try:
@@ -745,3 +747,120 @@ class ActionsMixin:
 
         ttk.Button(button_frame, text="Save", command=save_log_colors).pack(side="right", padx=(5, 0))
         ttk.Button(button_frame, text="Cancel", command=log_win.destroy).pack(side="right")
+
+    def show_bookmarks_tab(self):
+        """Switch to the bookmarks tab."""
+        self.main_notebook.select(self.bookmarks_tab)
+
+    def add_current_to_bookmarks(self):
+        """Add the current directory to bookmarks."""
+        if not self.current_node:
+            messagebox.showinfo("No Directory", "No directory is currently selected.")
+            return
+
+        path = self.current_node.path
+        if path in self.bookmarks:
+            messagebox.showinfo("Already Bookmarked", f"'{path}' is already bookmarked.")
+            return
+
+        # Store the current root node for this bookmark
+        self.bookmarks[path] = self.root_node
+        self.bookmarked_paths.append(path)
+        self.update_bookmarks_list()
+        self.save_bookmarks()
+
+        messagebox.showinfo("Bookmark Added", f"Added '{path}' to bookmarks.")
+
+    def remove_selected_bookmark(self):
+        """Remove the selected bookmark."""
+        selection = self.bookmarks_listbox.curselection()
+        if not selection:
+            messagebox.showinfo("No Selection", "Please select a bookmark to remove.")
+            return
+
+        index = selection[0]
+        path = self.bookmarked_paths[index]
+
+        if messagebox.askyesno("Remove Bookmark", f"Remove bookmark for '{path}'?"):
+            del self.bookmarks[path]
+            self.bookmarked_paths.pop(index)
+            self.update_bookmarks_list()
+            self.save_bookmarks()
+
+    def browse_selected_bookmark(self, event=None):
+        """Browse to the selected bookmark."""
+        selection = self.bookmarks_listbox.curselection()
+        if not selection:
+            messagebox.showinfo("No Selection", "Please select a bookmark to browse.")
+            return
+
+        index = selection[0]
+        path = self.bookmarked_paths[index]
+
+        # Switch to this bookmarked directory
+        self.switch_to_bookmark(path)
+
+    def on_bookmark_double_click(self, event):
+        """Handle double-click on bookmark."""
+        self.browse_selected_bookmark()
+
+    def switch_to_bookmark(self, path):
+        """Switch the treemap to show a bookmarked directory."""
+        # Check if the directory still exists
+        if not os.path.exists(path):
+            messagebox.showerror("Directory Not Found", f"The directory '{path}' no longer exists.")
+            # Remove the invalid bookmark
+            if path in self.bookmarks:
+                del self.bookmarks[path]
+                if path in self.bookmarked_paths:
+                    self.bookmarked_paths.remove(path)
+                self.update_bookmarks_list()
+                self.save_bookmarks()
+            return
+
+        # Check if we have a cached scan for this bookmark
+        if path in self.bookmarks and self.bookmarks[path]:
+            # Use cached scan data
+            self.root_node = self.bookmarks[path]
+            # Find the target node in the cached tree
+            target_node = self.find_node_by_path(self.root_node, path)
+            if target_node:
+                self.animate_zoom(None, target_node)
+                self.main_notebook.select(self.treemap_tab)
+                self.log_message(f"Loaded bookmark '{path}' from cache", "INFO")
+                return
+
+        # No valid cache or path not found, scan the directory
+        self.log_message(f"Scanning bookmarked directory '{path}'...", "INFO")
+        self.start_scan(path)
+
+    def find_node_by_path(self, root_node, target_path):
+        """Find a node by its path in the tree."""
+        if root_node.path == target_path:
+            return root_node
+
+        for child in root_node.children:
+            result = self.find_node_by_path(child, target_path)
+            if result:
+                return result
+        return None
+
+    def update_bookmarks_list(self):
+        """Update the bookmarks listbox."""
+        self.bookmarks_listbox.delete(0, tk.END)
+        for path in self.bookmarked_paths:
+            # Show just the directory name, full path as tooltip
+            name = os.path.basename(path) or path
+            self.bookmarks_listbox.insert(tk.END, name)
+
+    def save_bookmarks(self):
+        """Save bookmarks to settings."""
+        self.settings["bookmarks"] = self.bookmarked_paths.copy()
+        self.save_settings()
+
+    def load_bookmarks(self):
+        """Load bookmarks from settings."""
+        saved_bookmarks = self.settings.get("bookmarks", [])
+        self.bookmarked_paths = saved_bookmarks.copy()
+        # Note: We don't load the actual scan data, bookmarks will rescan when accessed
+        self.update_bookmarks_list()

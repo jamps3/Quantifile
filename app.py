@@ -23,8 +23,13 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.rect_nodes = {}
         self.dark_mode = False
 
+        # Bookmarks: dict of path -> scanned root node
+        self.bookmarks = {}
+        self.bookmarked_paths = []  # ordered list for UI
+
         self.create_ui()
         self.apply_theme()
+        self.load_bookmarks()
 
         # Save window position on close
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -63,6 +68,29 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.status = ttk.Label(status_frame, text="Choose a folder to scan", anchor="w")
         self.status.pack(fill="x")
 
+    def create_bookmarks_ui(self):
+        # Bookmarks toolbar
+        bookmarks_toolbar = ttk.Frame(self.bookmarks_tab)
+        bookmarks_toolbar.pack(fill="x", padx=4, pady=4)
+
+        ttk.Button(bookmarks_toolbar, text="Add Current", command=self.add_current_to_bookmarks).pack(side="left", padx=2)
+        ttk.Button(bookmarks_toolbar, text="Remove Selected", command=self.remove_selected_bookmark).pack(side="left", padx=2)
+        ttk.Button(bookmarks_toolbar, text="Browse Selected", command=self.browse_selected_bookmark).pack(side="left", padx=2)
+
+        # Bookmarks listbox with scrollbar
+        bookmarks_frame = ttk.Frame(self.bookmarks_tab)
+        bookmarks_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+
+        self.bookmarks_listbox = tk.Listbox(bookmarks_frame, selectmode="single")
+        self.bookmarks_listbox.pack(side="left", fill="both", expand=True)
+
+        bookmarks_scrollbar = ttk.Scrollbar(bookmarks_frame, orient="vertical", command=self.bookmarks_listbox.yview)
+        bookmarks_scrollbar.pack(side="right", fill="y")
+        self.bookmarks_listbox.configure(yscrollcommand=bookmarks_scrollbar.set)
+
+        self.bookmarks_listbox.bind("<Double-Button-1>", self.on_bookmark_double_click)
+        self.bookmarks_listbox.bind("<Return>", self.browse_selected_bookmark)
+
     def truncate_text(self, text):
         import tkinter.font as tkfont
         # Get available width for text (window width minus padding)
@@ -99,6 +127,7 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.free_space_button = ttk.Button(toolbar, text="Free Space (OFF)", command=self.toggle_free_space)
         self.free_space_button.pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Export SVG", command=self.export_svg).pack(side="left", padx=4, pady=4)
+        ttk.Button(toolbar, text="Bookmarks", command=self.show_bookmarks_tab).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Settings", command=self.show_settings).pack(side="right", padx=4, pady=4)
         ttk.Button(toolbar, text="About", command=self.show_about).pack(side="right", padx=4, pady=4)
 
@@ -120,8 +149,10 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
 
         self.treemap_tab = ttk.Frame(self.main_notebook)
         self.log_tab = ttk.Frame(self.main_notebook)
+        self.bookmarks_tab = ttk.Frame(self.main_notebook)
         self.main_notebook.add(self.treemap_tab, text="Treemap")
         self.main_notebook.add(self.log_tab, text="Log")
+        self.main_notebook.add(self.bookmarks_tab, text="Bookmarks")
 
         self.canvas = tk.Canvas(self.treemap_tab, bg="white")
         self.canvas.pack(fill="both", expand=True)
@@ -135,6 +166,8 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         log_scrollbar = ttk.Scrollbar(self.log_tab, orient="vertical", command=self.log_text.yview)
         log_scrollbar.pack(side="right", fill="y", padx=(0, 4), pady=(0, 4))
         self.log_text.configure(yscrollcommand=log_scrollbar.set)
+
+        self.create_bookmarks_ui()
 
         self.canvas.bind("<Button-1>", self.on_click)
         self.canvas.bind("<Double-Button-1>", self.on_double_click)
