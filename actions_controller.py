@@ -748,6 +748,22 @@ class ActionsMixin:
         ttk.Button(button_frame, text="Save", command=save_log_colors).pack(side="right", padx=(5, 0))
         ttk.Button(button_frame, text="Cancel", command=log_win.destroy).pack(side="right")
 
+    def toggle_bookmarks_panel(self):
+        """Toggle the bookmarks side panel visibility."""
+        if self.bookmarks_visible:
+            # Hide the panel
+            self.main_paned.remove(self.bookmarks_panel)
+            self.bookmarks_visible = False
+            self.bookmarks_toggle_button.config(text="Bookmarks (HIDDEN)")
+        else:
+            # Show the panel
+            self.main_paned.insert(0, self.bookmarks_panel)
+            self.main_paned.sashpos(0, 200)  # Set initial width
+            self.bookmarks_visible = True
+            self.bookmarks_toggle_button.config(text="Bookmarks (SHOWN)")
+            # Refresh the panel listbox
+            self.update_bookmarks_panel_list()
+
     def show_bookmarks_tab(self):
         """Switch to the bookmarks tab."""
         self.main_notebook.select(self.bookmarks_tab)
@@ -767,13 +783,26 @@ class ActionsMixin:
         self.bookmarks[path] = self.root_node
         self.bookmarked_paths.append(path)
         self.update_bookmarks_list()
+        if self.bookmarks_visible:
+            self.update_bookmarks_panel_list()
         self.save_bookmarks()
 
         messagebox.showinfo("Bookmark Added", f"Added '{path}' to bookmarks.")
 
     def remove_selected_bookmark(self):
         """Remove the selected bookmark."""
-        selection = self.bookmarks_listbox.curselection()
+        # Check which listbox has selection
+        listbox = None
+        if self.bookmarks_tab_listbox.curselection():
+            listbox = self.bookmarks_tab_listbox
+        elif self.bookmarks_panel_listbox.curselection():
+            listbox = self.bookmarks_panel_listbox
+
+        if not listbox:
+            messagebox.showinfo("No Selection", "Please select a bookmark to remove.")
+            return
+
+        selection = listbox.curselection()
         if not selection:
             messagebox.showinfo("No Selection", "Please select a bookmark to remove.")
             return
@@ -785,11 +814,28 @@ class ActionsMixin:
             del self.bookmarks[path]
             self.bookmarked_paths.pop(index)
             self.update_bookmarks_list()
+            if self.bookmarks_visible:
+                self.update_bookmarks_panel_list()
             self.save_bookmarks()
 
     def browse_selected_bookmark(self, event=None):
         """Browse to the selected bookmark."""
-        selection = self.bookmarks_listbox.curselection()
+        # Determine which listbox triggered this
+        listbox = None
+        if event and hasattr(event, 'widget'):
+            listbox = event.widget
+        else:
+            # Check which listbox has selection
+            if self.bookmarks_tab_listbox.curselection():
+                listbox = self.bookmarks_tab_listbox
+            elif self.bookmarks_panel_listbox.curselection():
+                listbox = self.bookmarks_panel_listbox
+
+        if not listbox:
+            messagebox.showinfo("No Selection", "Please select a bookmark to browse.")
+            return
+
+        selection = listbox.curselection()
         if not selection:
             messagebox.showinfo("No Selection", "Please select a bookmark to browse.")
             return
@@ -802,7 +848,7 @@ class ActionsMixin:
 
     def on_bookmark_double_click(self, event):
         """Handle double-click on bookmark."""
-        self.browse_selected_bookmark()
+        self.browse_selected_bookmark(event)
 
     def switch_to_bookmark(self, path):
         """Switch the treemap to show a bookmarked directory."""
@@ -815,6 +861,8 @@ class ActionsMixin:
                 if path in self.bookmarked_paths:
                     self.bookmarked_paths.remove(path)
                 self.update_bookmarks_list()
+                if self.bookmarks_visible:
+                    self.update_bookmarks_panel_list()
                 self.save_bookmarks()
             return
 
@@ -846,12 +894,20 @@ class ActionsMixin:
         return None
 
     def update_bookmarks_list(self):
-        """Update the bookmarks listbox."""
-        self.bookmarks_listbox.delete(0, tk.END)
+        """Update the bookmarks listbox in the tab."""
+        self.bookmarks_tab_listbox.delete(0, tk.END)
         for path in self.bookmarked_paths:
             # Show just the directory name, full path as tooltip
             name = os.path.basename(path) or path
-            self.bookmarks_listbox.insert(tk.END, name)
+            self.bookmarks_tab_listbox.insert(tk.END, name)
+
+    def update_bookmarks_panel_list(self):
+        """Update the bookmarks listbox in the side panel."""
+        self.bookmarks_panel_listbox.delete(0, tk.END)
+        for path in self.bookmarked_paths:
+            # Show just the directory name, full path as tooltip
+            name = os.path.basename(path) or path
+            self.bookmarks_panel_listbox.insert(tk.END, name)
 
     def save_bookmarks(self):
         """Save bookmarks to settings."""
@@ -864,3 +920,5 @@ class ActionsMixin:
         self.bookmarked_paths = saved_bookmarks.copy()
         # Note: We don't load the actual scan data, bookmarks will rescan when accessed
         self.update_bookmarks_list()
+        if self.bookmarks_visible:
+            self.update_bookmarks_panel_list()

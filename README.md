@@ -21,7 +21,7 @@ A disk space visualization tool inspired by the classic SpaceMonger application.
   - Delete files/folders with confirmation
 - **Free Space Visualization**: Toggle to show available drive space as a visual block
 - **Export**: Export current treemap as SVG with proper fonts and positioning
-- **Bookmarks**: Save favorite directories for instant access, with cached scan data for quick browsing
+- **Bookmarks**: Save favorite directories for instant access, with cached scan data for quick browsing and optional side panel view
 - **Settings Persistence**: Remembers window position, fullscreen state, colors, fonts, and scan behavior
 - **Color Customization**: Customize colors for directories, files, selection, outlines, and labels with immediate application
 - **Font Customization**: Configure UI font size, heading size, and treemap label font sizing
@@ -70,7 +70,7 @@ python main.py
 | **Open selected item** | Click "Open Selected" button |
 | **Delete selected item** | Click "Delete Selected" button |
 | **Export SVG** | Click "Export SVG" button |
-| **Bookmarks** | Click "Bookmarks" button to open bookmarks tab |
+| **Bookmarks** | Click "Bookmarks" button to toggle side panel, or use tab view |
 | **View log messages** | Open the "Log" tab |
 | **Settings** | Click "Settings" button |
 | **About** | Click "About" button |
@@ -98,9 +98,10 @@ python main.py
    - Free space toggle adds available drive space visualization
    - Scan warnings and operation results appear in the Log tab
    - Inaccessible folders are logged, counted in the scan summary, and shown as access-denied placeholders
-   - Recently modified files are outlined/marked visually, with last-hour files emphasized
-   - Backspace navigates to the parent directory
-   - Hovering shows the cursor as a hand and displays path/size info
+    - Recently modified files are outlined/marked visually, with last-hour files emphasized
+    - Bookmarks side panel can be toggled for simultaneous viewing of favorites
+    - Backspace navigates to the parent directory
+    - Hovering shows the cursor as a hand and displays path/size info
 
 ## Architecture
 
