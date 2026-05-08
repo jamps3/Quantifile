@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.font as tkfont
 
 from layout import treemap
 from models import human_size
@@ -153,25 +154,6 @@ class RenderMixin:
             label_color = "white" if self.dark_mode else "black"
 
         if w > 70 and h > 25:
-            # Build label with item count for directories
-            if getattr(node, "access_denied", False):
-                name_part = node.name
-                if len(name_part) > 16:
-                    name_part = name_part[:14] + ".."
-                label = f"{name_part}\nAccess denied\n{human_size(node.size)}"
-            elif node.is_dir and node.children:
-                item_count = len(node.children)
-                name_part = node.name
-                # Truncate long names
-                if len(name_part) > 16:
-                    name_part = name_part[:14] + ".."
-                label = f"{name_part}\n{human_size(node.size)}\n{item_count} item{'s' if item_count != 1 else ''}"
-            else:
-                name_part = node.name
-                if len(name_part) > 20:
-                    name_part = name_part[:18] + ".."
-                label = f"{name_part}\n{human_size(node.size)}"
-
             # Adjust font size based on rectangle dimensions
             min_size = self.get_setting_int("canvas_label_min_size", 5, 4, 18)
             max_size = self.get_setting_int("canvas_label_max_size", 8, min_size, 32)
@@ -180,7 +162,22 @@ class RenderMixin:
                 # Multi-line label needs more space
                 font_size = max(min_size, min(max_size, int(h / 10), int(w / 15)))
             else:
-                font_size = max(min_size, min(max_size, int(h / 8), int(w / (len(name_part) + 3))))
+                font_size = max(min_size, min(max_size, int(h / 8), int(w / 10)))
+
+            label_font = (font_family, font_size)
+            measured_font = tkfont.Font(family=font_family, size=font_size)
+            available_text_width = max(1, int(w - 8))
+
+            if getattr(node, "access_denied", False):
+                name_part = self.truncate_canvas_label(node.name, measured_font, available_text_width)
+                label = f"{name_part}\nAccess denied\n{human_size(node.size)}"
+            elif node.is_dir and node.children:
+                item_count = len(node.children)
+                name_part = self.truncate_canvas_label(node.name, measured_font, available_text_width)
+                label = f"{name_part}\n{human_size(node.size)}\n{item_count} item{'s' if item_count != 1 else ''}"
+            else:
+                name_part = self.truncate_canvas_label(node.name, measured_font, available_text_width)
+                label = f"{name_part}\n{human_size(node.size)}"
 
             if font_size >= min_size:
                 self.canvas.create_text(
@@ -189,7 +186,7 @@ class RenderMixin:
                     anchor="nw",
                     text=label,
                     fill=label_color,
-                    font=(font_family, font_size)
+                    font=label_font
                 )
 
         if node.is_dir and node.children:
@@ -204,6 +201,25 @@ class RenderMixin:
             for child, cx, cy, cw, ch in treemap(visible_children, inner_x, inner_y, inner_w, inner_h):
                 if cw >= 3 and ch >= 3:
                     self.draw_node(child, cx, cy, cw, ch, depth + 1)
+
+    def truncate_canvas_label(self, text, font, max_width):
+        if font.measure(text) <= max_width:
+            return text
+
+        ellipsis = "..."
+        if font.measure(ellipsis) > max_width:
+            return ""
+
+        low, high = 0, len(text)
+        while low < high:
+            mid = (low + high + 1) // 2
+            candidate = text[:mid] + ellipsis
+            if font.measure(candidate) <= max_width:
+                low = mid
+            else:
+                high = mid - 1
+
+        return text[:low] + ellipsis
 
     def node_at_event(self, event):
         items = self.canvas.find_overlapping(event.x, event.y, event.x, event.y)
@@ -222,6 +238,10 @@ class RenderMixin:
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
             self.status.config(text=f"{scan_mode}: {self.truncate_text(node.path)} — {human_size(node.size)}")
             self.draw()
+
+            # If quick zoom mode is on and node is a directory, zoom in on single-click
+            if self.quick_zoom_mode and node.is_dir:
+                self.animate_zoom(self.current_node, node)
 
     def animate_zoom(self, old_node, new_node, steps=10, duration=150):
         """Animate transition between nodes."""
@@ -389,11 +409,14 @@ class RenderMixin:
         node = self.node_at_event(event)
 
         if node:
-            if node.is_dir:
+            self.selected_node = node
+            if node.is_dir and not getattr(node, "access_denied", False):
                 self.animate_zoom(self.current_node, node)
             else:
-                self.selected_node = node
                 self.open_selected()
+            return "break"
+
+        return None
 
     def on_motion(self, event):
         node = self.node_at_event(event)
