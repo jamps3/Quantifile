@@ -12,19 +12,20 @@
 - Color customization with immediate application
 - Context menu color editing for folder and file-type colors
 - Organized tabbed Settings dialog with configurable UI and treemap label fonts
+- Navigation animation settings with none, zoom, and collapse modes
 - Log tab for scan warnings, permission errors, and non-blocking operation messages
 - Access-denied folder placeholders with scan summary logging
+- Visual indicators for recently modified files with stronger last-hour badges
 - Shared scan worker pool capped by Maximum scan threads
 - Split main.py into launcher, model, layout, scanner, app shell, and controller mixin modules
+- Squarified-style treemap layout algorithm
 - Dynamic text truncation based on window width
 - Cross-platform file operations and properties
 - Enhanced About dialog with license and support link
 - MIT license and comprehensive documentation
 
 ## Future Enhancements
-- Squarified treemap algorithm for better aspect ratios
 - Advanced search and filtering (name, type, size, date)
-- Visual indicators for recently modified or accessed files
 - Bookmark favorite directories
 - Multi-selection and batch operations
 - Undo/redo for file operations

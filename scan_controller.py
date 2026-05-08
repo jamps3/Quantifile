@@ -76,10 +76,13 @@ class ScanMixin:
         Files get actual size.
         """
         node = Node(path, os.path.isdir(path))
+        self.set_node_modified_time(node)
 
         if not node.is_dir:
             try:
-                node.size = os.path.getsize(path)
+                stat = os.stat(path)
+                node.size = stat.st_size
+                node.modified_time = stat.st_mtime
             except OSError:
                 node.size = 0
             return node
@@ -100,7 +103,9 @@ class ScanMixin:
                     # Files: get actual size
                     child = Node(entry.path, False)
                     try:
-                        child.size = entry.stat().st_size
+                        stat = entry.stat()
+                        child.size = stat.st_size
+                        child.modified_time = stat.st_mtime
                     except OSError:
                         child.size = 0
                     node.children.append(child)
@@ -121,6 +126,7 @@ class ScanMixin:
         Use small placeholder sizes so folders are visible but comparable.
         """
         node = Node(path, True)
+        self.set_node_modified_time(node)
         try:
             entries = list(os.scandir(path))
         except PermissionError:
@@ -181,10 +187,18 @@ class ScanMixin:
             self.nodes_scanned += amount
             self.update_scan_progress()
 
+    def set_node_modified_time(self, node):
+        try:
+            node.modified_time = os.path.getmtime(node.path)
+        except OSError:
+            node.modified_time = 0
+
     def mark_access_denied(self, node):
         node.access_denied = True
         try:
-            node.size = os.path.getsize(node.path)
+            stat = os.stat(node.path)
+            node.size = stat.st_size
+            node.modified_time = stat.st_mtime
         except OSError:
             node.size = 1
         if node.size <= 0:
@@ -196,7 +210,9 @@ class ScanMixin:
     def scan_file_node(self, path):
         node = Node(path, False)
         try:
-            node.size = os.path.getsize(path)
+            stat = os.stat(path)
+            node.size = stat.st_size
+            node.modified_time = stat.st_mtime
         except OSError:
             node.size = 0
         self.increment_nodes_scanned()
@@ -205,6 +221,7 @@ class ScanMixin:
     def scan_directory_level(self, path):
         node = Node(path, True)
         child_dirs = []
+        self.set_node_modified_time(node)
         self.increment_nodes_scanned()
 
         try:
@@ -229,7 +246,9 @@ class ScanMixin:
                 else:
                     child = Node(entry.path, False)
                     try:
-                        child.size = entry.stat().st_size
+                        stat = entry.stat()
+                        child.size = stat.st_size
+                        child.modified_time = stat.st_mtime
                     except OSError:
                         child.size = 0
                     node.children.append(child)

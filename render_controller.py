@@ -1,5 +1,6 @@
 import tkinter as tk
 import tkinter.font as tkfont
+import time
 
 from layout import treemap
 from models import human_size
@@ -130,10 +131,18 @@ class RenderMixin:
         if self.search_active and node.path not in self.search_matches:
             color = self.dim_color(color)
 
+        recency = self.modified_recency(node)
+
         # Determine outline color and width based on selection and settings
         if self.selected_node and node.path == self.selected_node.path:
             outline_color = self.settings.get("selection_color", "#ffcc00")
             outline_width = 3
+        elif recency == "hour":
+            outline_color = "#00ff99" if self.dark_mode else "#008f5a"
+            outline_width = 3
+        elif recency == "recent":
+            outline_color = "#66d9ff" if self.dark_mode else "#0078d7"
+            outline_width = 2
         else:
             outline_color = self.settings.get("outline_color", "")
             if not outline_color:
@@ -148,6 +157,9 @@ class RenderMixin:
         )
 
         self.rect_nodes[rect] = node
+
+        if recency:
+            self.draw_modified_indicator(node, x, y, w, h, recency)
 
         label_color = self.settings.get("label_color", "")
         if not label_color:
@@ -221,6 +233,64 @@ class RenderMixin:
 
         return text[:low] + ellipsis
 
+    def modified_recency(self, node):
+        if not self.settings.get("show_recent_modified", True):
+            return None
+        if not getattr(node, "modified_time", 0):
+            return None
+
+        age_seconds = time.time() - node.modified_time
+        if age_seconds < 0:
+            age_seconds = 0
+        if age_seconds <= 3600:
+            return "hour"
+
+        recent_days = self.get_setting_int("recent_modified_days", 7, 1, 365)
+        if age_seconds <= recent_days * 86400:
+            return "recent"
+
+        return None
+
+    def draw_modified_indicator(self, node, x, y, w, h, recency):
+        if w < 12 or h < 12:
+            return
+
+        if recency == "hour":
+            fill = "#00ff99" if self.dark_mode else "#00b36b"
+            text_fill = "#002b1a" if self.dark_mode else "white"
+            size = min(18, max(10, int(min(w, h) * 0.18)))
+            x1 = x + w - size - 3
+            y1 = y + 3
+            marker = self.canvas.create_rectangle(
+                x1, y1, x1 + size, y1 + size,
+                fill=fill,
+                outline=""
+            )
+            self.rect_nodes[marker] = node
+            if size >= 12:
+                label = self.canvas.create_text(
+                    x1 + size / 2,
+                    y1 + size / 2,
+                    text="1h",
+                    fill=text_fill,
+                    font=(self.settings.get("canvas_font_family", "Segoe UI"), max(6, int(size * 0.42))),
+                    anchor="center"
+                )
+                self.rect_nodes[label] = node
+            return
+
+        marker_size = min(10, max(5, int(min(w, h) * 0.12)))
+        fill = "#66d9ff" if self.dark_mode else "#0078d7"
+        marker = self.canvas.create_oval(
+            x + w - marker_size - 4,
+            y + 4,
+            x + w - 4,
+            y + marker_size + 4,
+            fill=fill,
+            outline=""
+        )
+        self.rect_nodes[marker] = node
+
     def node_at_event(self, event):
         items = self.canvas.find_overlapping(event.x, event.y, event.x, event.y)
 
@@ -238,55 +308,29 @@ class RenderMixin:
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
             self.status.config(text=f"{scan_mode}: {self.truncate_text(node.path)} — {human_size(node.size)}")
             self.draw()
+        return "break"
 
-            # If quick zoom mode is on and node is a directory, zoom in on single-click
-            if self.quick_zoom_mode and node.is_dir:
-                self.animate_zoom(self.current_node, node)
-
-    def animate_zoom(self, old_node, new_node, steps=10, duration=150):
+    def animate_zoom(self, old_node, new_node, steps=None, duration=None):
         """Animate transition between nodes."""
-        if not self.settings.get("animated_zoom", False):
+        mode = self.settings.get("animation_mode", "none")
+        if self.settings.get("animated_zoom", False) and mode == "none":
+            mode = "zoom"
+        if mode == "none":
             self._finish_animation(new_node)
             return
+        if steps is None:
+            steps = self.get_setting_int("animation_steps", 10, 3, 40)
+        if duration is None:
+            duration = self.get_setting_int("animation_duration", 160, 50, 1000)
 
         # If no old_node (first load), do a simple fade-in zoom from center
         if not old_node:
             if new_node:
-                self.current_node = new_node
-                self.selected_node = new_node
-                self.canvas.delete("all")
-                self.rect_nodes.clear()
-                width = self.canvas.winfo_width()
-                height = self.canvas.winfo_height()
-                cx, cy = width // 2, height // 2
-                
-                def progressive_draw(step=0):
-                    if step >= steps:
-                        self.draw()
-                        self._update_status(new_node)
-                        return
-                    
-                    scale = (step + 1) / steps
-                    self.canvas.delete("all")
-                    self.rect_nodes.clear()
-                    
-                    base_w = width - 10
-                    base_h = height - 10
-                    draw_w = base_w * scale
-                    draw_h = base_h * scale
-                    draw_x = cx - draw_w // 2
-                    draw_y = cy - draw_h // 2
-                    
-                    color = self.color_for_node(new_node, 0)
-                    temp_rect_id = self.canvas.create_rectangle(
-                        draw_x, draw_y, draw_x + draw_w, draw_y + draw_h,
-                        fill=color, outline="black", width=1
-                    )
-                    self.rect_nodes[temp_rect_id] = new_node
-                    
-                    self.after(int(duration / steps), lambda: progressive_draw(step + 1))
-                
-                progressive_draw()
+                self.animate_rect_zoom(new_node, None, steps, duration)
+            return
+
+        if mode == "zoom":
+            self.animate_rect_zoom(new_node, self.node_bbox(new_node), steps, duration)
             return
 
         # Normal zoom between two existing nodes - capture old canvas state before deletion
@@ -325,6 +369,56 @@ class RenderMixin:
             self.after(int(duration / steps), lambda: do_animation(i - 1))
 
         do_animation()
+
+    def node_bbox(self, node):
+        for rect, rect_node in self.rect_nodes.items():
+            if rect_node == node:
+                try:
+                    return self.canvas.bbox(rect)
+                except tk.TclError:
+                    return None
+        return None
+
+    def animate_rect_zoom(self, node, start_bbox, steps, duration):
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+        end_bbox = (5, 5, max(6, width - 5), max(6, height - 5))
+
+        if not start_bbox:
+            cx = width / 2
+            cy = height / 2
+            start_bbox = (cx - 2, cy - 2, cx + 2, cy + 2)
+
+        color = self.access_denied_color() if getattr(node, "access_denied", False) else self.color_for_node(node, 0)
+        outline = self.settings.get("selection_color", "#ffcc00")
+
+        def lerp(a, b, t):
+            return a + (b - a) * t
+
+        def draw_step(step=0):
+            if step >= steps:
+                self._finish_animation(node)
+                return
+
+            t = (step + 1) / steps
+            eased = 1 - (1 - t) * (1 - t)
+            x1 = lerp(start_bbox[0], end_bbox[0], eased)
+            y1 = lerp(start_bbox[1], end_bbox[1], eased)
+            x2 = lerp(start_bbox[2], end_bbox[2], eased)
+            y2 = lerp(start_bbox[3], end_bbox[3], eased)
+
+            self.canvas.delete("all")
+            self.rect_nodes.clear()
+            rect = self.canvas.create_rectangle(
+                x1, y1, x2, y2,
+                fill=color,
+                outline=outline,
+                width=3
+            )
+            self.rect_nodes[rect] = node
+            self.after(max(1, int(duration / steps)), lambda: draw_step(step + 1))
+
+        draw_step()
 
     def _finish_animation(self, node):
         """Complete animation by setting node and drawing final state."""
@@ -406,7 +500,7 @@ class RenderMixin:
         self.draw()
 
     def on_double_click(self, event):
-        node = self.node_at_event(event)
+        node = self.node_at_event(event) or self.selected_node
 
         if node:
             self.selected_node = node
@@ -429,3 +523,4 @@ class RenderMixin:
             if self.current_node:
                 scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
                 self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)}")
+        return "break"

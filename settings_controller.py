@@ -18,7 +18,12 @@ class SettingsMixin:
             "fullscreen": False,
             "show_scan_progress": True,
             "max_scan_threads": 6,
+            "show_recent_modified": True,
+            "recent_modified_days": 7,
             "animated_zoom": False,
+            "animation_mode": "none",
+            "animation_duration": 160,
+            "animation_steps": 10,
             "auto_rescan_on_delete": True,
             "dir_color": "",
             "file_color": "",
@@ -49,6 +54,8 @@ class SettingsMixin:
         for key, value in defaults.items():
             if key not in self.settings:
                 self.settings[key] = value
+        if self.settings.get("animated_zoom", False) and self.settings.get("animation_mode", "none") == "none":
+            self.settings["animation_mode"] = "zoom"
         self.dark_mode = self.settings.get("dark_mode", False)
 
     def apply_geometry(self):
@@ -306,8 +313,29 @@ class SettingsMixin:
         self.remember_pos_var = tk.BooleanVar(value=self.settings.get("remember_window_pos", True))
         ttk.Checkbutton(behavior_tab, text="Remember window position", variable=self.remember_pos_var).pack(anchor="w", pady=2)
 
-        self.animated_zoom_var = tk.BooleanVar(value=self.settings.get("animated_zoom", False))
-        ttk.Checkbutton(behavior_tab, text="Animated zoom in/out", variable=self.animated_zoom_var).pack(anchor="w", pady=2)
+        ttk.Separator(behavior_tab, orient="horizontal").pack(fill="x", pady=12)
+        ttk.Label(behavior_tab, text="Animation", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
+
+        animation_mode = self.settings.get("animation_mode", "none")
+        if self.settings.get("animated_zoom", False) and animation_mode == "none":
+            animation_mode = "zoom"
+        self.animation_mode_var = tk.StringVar(value=animation_mode)
+        animation_frame = ttk.Frame(behavior_tab)
+        animation_frame.pack(fill="x", pady=3)
+        ttk.Label(animation_frame, text="Mode", width=24).pack(side="left")
+        ttk.Combobox(
+            animation_frame,
+            textvariable=self.animation_mode_var,
+            values=["none", "zoom", "collapse"],
+            width=14,
+            state="readonly"
+        ).pack(side="left")
+
+        self.animation_duration_var = tk.IntVar(value=self.get_setting_int("animation_duration", 160, 50, 1000))
+        add_labeled_spinbox(behavior_tab, "Duration (ms)", self.animation_duration_var, 50, 1000)
+
+        self.animation_steps_var = tk.IntVar(value=self.get_setting_int("animation_steps", 10, 3, 40))
+        add_labeled_spinbox(behavior_tab, "Steps", self.animation_steps_var, 3, 40)
 
         self.auto_rescan_var = tk.BooleanVar(value=self.settings.get("auto_rescan_on_delete", True))
         ttk.Checkbutton(behavior_tab, text="Auto rescan after delete", variable=self.auto_rescan_var).pack(anchor="w", pady=2)
@@ -321,6 +349,20 @@ class SettingsMixin:
         self.max_threads_var = tk.IntVar(value=self.get_setting_int("max_scan_threads", 6, 1, 32))
         ttk.Spinbox(scan_tab, from_=1, to=32, textvariable=self.max_threads_var, width=5).pack(anchor="w", pady=(0, 10))
 
+        ttk.Separator(scan_tab, orient="horizontal").pack(fill="x", pady=12)
+        ttk.Label(scan_tab, text="Modified Files", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
+
+        self.show_recent_modified_var = tk.BooleanVar(value=self.settings.get("show_recent_modified", True))
+        ttk.Checkbutton(
+            scan_tab,
+            text="Show recently modified indicators",
+            variable=self.show_recent_modified_var
+        ).pack(anchor="w", pady=2)
+
+        ttk.Label(scan_tab, text="Recent window (days):").pack(anchor="w", pady=(12, 2))
+        self.recent_modified_days_var = tk.IntVar(value=self.get_setting_int("recent_modified_days", 7, 1, 365))
+        ttk.Spinbox(scan_tab, from_=1, to=365, textvariable=self.recent_modified_days_var, width=5).pack(anchor="w", pady=(0, 10))
+
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill="x", pady=(12, 0))
 
@@ -330,7 +372,13 @@ class SettingsMixin:
             self.settings["remember_window_pos"] = self.remember_pos_var.get()
             self.settings["show_scan_progress"] = self.show_scan_progress_var.get()
             self.settings["max_scan_threads"] = self.get_int_var(self.max_threads_var, 6, 1, 32)
-            self.settings["animated_zoom"] = self.animated_zoom_var.get()
+            self.settings["show_recent_modified"] = self.show_recent_modified_var.get()
+            self.settings["recent_modified_days"] = self.get_int_var(self.recent_modified_days_var, 7, 1, 365)
+            animation_mode = self.animation_mode_var.get()
+            self.settings["animation_mode"] = animation_mode
+            self.settings["animated_zoom"] = animation_mode != "none"
+            self.settings["animation_duration"] = self.get_int_var(self.animation_duration_var, 160, 50, 1000)
+            self.settings["animation_steps"] = self.get_int_var(self.animation_steps_var, 10, 3, 40)
             self.settings["auto_rescan_on_delete"] = self.auto_rescan_var.get()
             self.settings["dark_mode"] = (self.theme_var.get() == "dark")
             self.settings["ui_font_family"] = self.ui_font_family_var.get().strip() or "Segoe UI"

@@ -24,8 +24,10 @@ A disk space visualization tool inspired by the classic SpaceMonger application.
 - **Settings Persistence**: Remembers window position, fullscreen state, colors, fonts, and scan behavior
 - **Color Customization**: Customize colors for directories, files, selection, outlines, and labels with immediate application
 - **Font Customization**: Configure UI font size, heading size, and treemap label font sizing
+- **Animation Options**: Choose no animation, zoom animation, or collapse animation for treemap navigation
 - **Log Tab**: Scan warnings, permission errors, and operation results are recorded without disruptive popups
 - **Access-Denied Placeholders**: Inaccessible folders stay visible with a metadata-size or tiny placeholder block
+- **Recent Modified Indicators**: Files modified in the last hour get a strong badge; recent files get a subtler marker
 - **Dynamic UI**: Status text truncates based on window width, dialogs center properly
 - **Rescan**: Re-scan directories to reflect changes
 - **Cross-Platform**: Works on Windows, macOS, and Linux
@@ -80,7 +82,7 @@ python main.py
 
 1. **Scanning**: When you select a folder, the application recursively scans all subdirectories and files, building a tree structure where each node tracks its size. Note: On Windows, drive roots may have permission restrictions; scan subdirectories like 'C:\Users' for better results.
 
-2. **Treemap Layout**: The visualization uses a simple slice-and-dice treemap algorithm. The available rectangle is divided proportionally based on each item's size relative to the total. Horizontal splits are used when the width ≥ height, otherwise vertical splits.
+2. **Treemap Layout**: The visualization uses a squarified-style treemap algorithm. The available rectangle is divided proportionally based on each item's size, while rows are chosen to reduce extreme aspect ratios.
 
 3. **Rendering**: The treemap is drawn recursively on a Tkinter canvas. Each node is represented as a colored rectangle with a label (when space permits). Colors are customizable and vary by type and depth.
 
@@ -94,6 +96,7 @@ python main.py
    - Free space toggle adds available drive space visualization
    - Scan warnings and operation results appear in the Log tab
    - Inaccessible folders are logged, counted in the scan summary, and shown as access-denied placeholders
+   - Recently modified files are outlined/marked visually, with last-hour files emphasized
    - Backspace navigates to the parent directory
    - Hovering shows the cursor as a hand and displays path/size info
 
@@ -190,14 +193,13 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 
 ## Limitations
 
-- The slice-and-dice algorithm can produce elongated rectangles; a squarified algorithm would produce better aspect ratios
+- The treemap algorithm is a compact custom squarified-style implementation, not a full textbook squarify implementation
 - No persistent history/bookmarks
 - Progress bar shows item count but may not accurately reflect actual scan progress on some systems
 
 ## Future Enhancements
 
 Potential improvements could include:
-- Squarified treemap algorithm for better aspect ratios
 - Visual indicators for recently modified or accessed files
 - Bookmark favorite directories
 - Advanced search and filtering options

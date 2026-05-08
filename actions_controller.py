@@ -245,6 +245,7 @@ class ActionsMixin:
             self.zoom_out()
         else:
             self.show_context_menu(event)
+        return "break"
 
     def show_context_menu(self, event):
         if not self.context_menu:

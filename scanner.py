@@ -5,6 +5,10 @@ from models import Node
 
 def scan_path(path):
     node = Node(path, os.path.isdir(path))
+    try:
+        node.modified_time = os.path.getmtime(path)
+    except OSError:
+        node.modified_time = 0
 
     if not node.is_dir:
         try:
