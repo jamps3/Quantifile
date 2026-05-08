@@ -40,12 +40,14 @@ def scan_path(path):
             node.size = 0
         return node
 
-    try:
-        entries = list(os.scandir(path))
-    except PermissionError:
-        return node
-    except OSError:
-        return node
+        try:
+            entries = list(os.scandir(path))
+        except PermissionError:
+            messagebox.showerror("Scan Failed", f"Permission denied scanning {path}. Try running as administrator or scan a subdirectory.")
+            return node
+        except OSError as e:
+            messagebox.showerror("Scan Failed", f"Error scanning {path}: {e}")
+            return node
 
     for entry in entries:
         try:
@@ -203,15 +205,9 @@ class Quantifile(tk.Tk):
         super().__init__()
 
         self.title("Quantifile")
-        
+
         self.load_settings()
         self.apply_geometry()
-        
-        try:
-            icon = tk.PhotoImage(file="icon-1024.png")
-            self.iconphoto(False, icon)
-        except tk.TclError:
-            pass
 
         self.root_node = None
         self.current_node = None
@@ -220,9 +216,64 @@ class Quantifile(tk.Tk):
 
         self.create_ui()
         self.apply_theme()
-        
+
         # Save window position on close
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def create_search_ui(self):
+        # Search row
+        search_frame = ttk.Frame(self)
+        search_frame.pack(fill="x", padx=4, pady=(0, 4))
+
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", lambda *args: self.apply_search())
+
+        ttk.Label(search_frame, text="Search:").pack(side="left", padx=(0, 4))
+        self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var, width=20)
+        self.search_entry.pack(side="left", padx=(0, 4))
+
+        self.search_type_var = tk.StringVar(value="name")
+        ttk.Radiobutton(search_frame, text="Name", variable=self.search_type_var, value="name",
+                        command=self.apply_search).pack(side="left", padx=2)
+        ttk.Radiobutton(search_frame, text="Size ≥ ", variable=self.search_type_var, value="size",
+                        command=self.apply_search).pack(side="left", padx=2)
+
+        self.min_size_var = tk.StringVar(value="1MB")
+        self.size_entry = ttk.Entry(search_frame, textvariable=self.min_size_var, width=8)
+        self.size_entry.pack(side="left", padx=(0, 4))
+        self.size_entry.bind("<Return>", lambda e: self.apply_search())
+        self.size_entry.bind("<KeyRelease>", lambda e: self.apply_search() if e.keysym in ("Return", "KP_Enter") else None)
+
+        ttk.Button(search_frame, text="×", width=2, command=self.clear_search).pack(side="left", padx=2)
+
+    def create_status_ui(self):
+        # Status row
+        status_frame = ttk.Frame(self)
+        status_frame.pack(fill="x", padx=4, pady=(0, 4))
+
+        self.status = ttk.Label(status_frame, text="Choose a folder to scan", anchor="w")
+        self.status.pack(fill="x")
+
+    def truncate_text(self, text):
+        import tkinter.font as tkfont
+        # Get available width for text (window width minus padding)
+        available_width = max(100, self.winfo_width() - 20)  # Minimum 100
+        font_str = self.status.cget("font")
+        font = tkfont.Font(font=font_str)
+        full_width = font.measure(text)
+        if full_width <= available_width:
+            return text
+        # Binary search for max length
+        low, high = 0, len(text)
+        while low < high:
+            mid = (low + high + 1) // 2
+            truncated = text[:mid] + "..."
+            width = font.measure(truncated)
+            if width <= available_width:
+                low = mid
+            else:
+                high = mid - 1
+        return text[:low] + "..."
 
     def create_ui(self):
         toolbar = ttk.Frame(self)
@@ -236,38 +287,14 @@ class Quantifile(tk.Tk):
         self.quick_zoom_button.pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Open Selected", command=self.open_selected).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Delete Selected", command=self.delete_selected).pack(side="left", padx=4, pady=4)
-        ttk.Button(toolbar, text="Show Free Space", command=self.show_free_space).pack(side="left", padx=4, pady=4)
+        self.free_space_button = ttk.Button(toolbar, text="Free Space (OFF)", command=self.toggle_free_space)
+        self.free_space_button.pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Export SVG", command=self.export_svg).pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Settings", command=self.show_settings).pack(side="right", padx=4, pady=4)
         ttk.Button(toolbar, text="About", command=self.show_about).pack(side="right", padx=4, pady=4)
 
-        # Search frame (initially hidden)
-        self.search_frame = ttk.Frame(toolbar)
-        self.search_var = tk.StringVar()
-        self.search_var.trace_add("write", lambda *args: self.apply_search())
-        
-        ttk.Label(self.search_frame, text="Search:").pack(side="left", padx=(0, 4))
-        self.search_entry = ttk.Entry(self.search_frame, textvariable=self.search_var, width=20)
-        self.search_entry.pack(side="left", padx=(0, 4))
-        
-        self.search_type_var = tk.StringVar(value="name")
-        ttk.Radiobutton(self.search_frame, text="Name", variable=self.search_type_var, value="name",
-                        command=self.apply_search).pack(side="left", padx=2)
-        ttk.Radiobutton(self.search_frame, text="Size ≥ ", variable=self.search_type_var, value="size",
-                        command=self.apply_search).pack(side="left", padx=2)
-        
-        self.min_size_var = tk.StringVar(value="1MB")
-        self.size_entry = ttk.Entry(self.search_frame, textvariable=self.min_size_var, width=8)
-        self.size_entry.pack(side="left", padx=(0, 4))
-        self.size_entry.bind("<Return>", lambda e: self.apply_search())
-        self.size_entry.bind("<KeyRelease>", lambda e: self.apply_search() if e.keysym in ("Return", "KP_Enter") else None)
-        
-        ttk.Button(self.search_frame, text="×", width=2, command=self.clear_search).pack(side="left", padx=2)
-
-        self.search_frame.pack(side="left", padx=4, pady=4)
-
-        self.status = ttk.Label(toolbar, text="Choose a folder to scan")
-        self.status.pack(side="left", padx=10)
+        self.create_search_ui()
+        self.create_status_ui()
 
         # Progress bar (initially hidden)
         self.progress_frame = ttk.Frame(self)
@@ -289,6 +316,12 @@ class Quantifile(tk.Tk):
         self.canvas.bind("<Configure>", self.on_resize)
 
         self.bind("<BackSpace>", lambda e: self.zoom_out())
+        self.bind("<Return>", self.on_enter)
+        self.bind("<KP_Enter>", self.on_enter)
+        self.bind("<Left>", self.on_arrow)
+        self.bind("<Right>", self.on_arrow)
+        self.bind("<Up>", self.on_arrow)
+        self.bind("<Down>", self.on_arrow)
 
         self.selected_node = None
         self.scan_aborted = False
@@ -304,6 +337,9 @@ class Quantifile(tk.Tk):
         # Right-click menu and toggle
         self.quick_zoom_mode = False  # False = show menu, True = instant zoom out
         self.context_menu = None
+
+        # Free space toggle
+        self.show_free_space_toggle = False
 
     def on_resize(self, event):
         """Redraw treemap when window is resized (e.g., fullscreen toggle)."""
@@ -377,10 +413,10 @@ class Quantifile(tk.Tk):
         match_count = len(self.search_matches)
         if match_count > 0:
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-            self.status.config(text=f"{scan_mode}: {self.current_node.path} — {human_size(self.current_node.size)} | {match_count} matches")
+            self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)} | {match_count} matches")
         else:
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-            self.status.config(text=f"{scan_mode}: {self.current_node.path} — {human_size(self.current_node.size)} | No matches")
+            self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)} | No matches")
 
     def _collect_name_matches(self, node, search_lower):
         """Recursively collect nodes whose name contains the search text."""
@@ -405,7 +441,7 @@ class Quantifile(tk.Tk):
         self.draw()
         if self.current_node:
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-            self.status.config(text=f"{scan_mode}: {self.current_node.path} — {human_size(self.current_node.size)}")
+            self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)}")
 
     def choose_folder(self):
         path = filedialog.askdirectory(title="Select folder or drive")
@@ -429,15 +465,17 @@ class Quantifile(tk.Tk):
         self.progress_frame.pack(fill="x", before=self.canvas)
         self.progress["value"] = 0
         self.progress_label.config(text="Counting items...")
-        self.status.config(text=f"Scanning: {path}")
+        self.status.config(text=f"Scanning: {self.truncate_text(path)}")
         self.canvas.delete("all")
 
         def worker():
             total = self.count_items(path)
-            self.after(0, lambda: (
-                self.progress_label.config(text=f"Scanning: 0 / {total} items..."),
-                setattr(self, "total_items", total)
-            ))
+            self.total_items = total
+            show_progress = self.settings.get("show_scan_progress", True)
+            if show_progress:
+                self.after(0, lambda: self.progress_label.config(text=f"Scanning: 0 / {total} items..."))
+            else:
+                self.after(0, lambda: self.progress_label.config(text="Scanning..."))
             node = self.scan_path_with_progress(path)
             self.after(0, lambda: self.finish_scan(node))
 
@@ -451,7 +489,7 @@ class Quantifile(tk.Tk):
         self.progress_frame.pack(fill="x", before=self.canvas)
         self.progress["value"] = 0
         self.progress_label.config(text="Quick scanning...")
-        self.status.config(text=f"Quick browse: {path}")
+        self.status.config(text=f"Quick browse: {self.truncate_text(path)}")
         self.canvas.delete("all")
 
         def worker():
@@ -565,10 +603,37 @@ class Quantifile(tk.Tk):
                 node.size = 0
             with self._nodes_scanned_lock:
                 self.nodes_scanned += 1
+                if self.settings.get("show_scan_progress", True) and hasattr(self, 'total_items') and (self.nodes_scanned % 100 == 0 or self.nodes_scanned == self.total_items):
+                    self.after(0, lambda: (
+                        self.progress.config(value=self.nodes_scanned / self.total_items * 100),
+                        self.progress_label.config(text=f"Scanning: {self.nodes_scanned} / {self.total_items} items...")
+                    ))
             return node
 
         with self._nodes_scanned_lock:
             self.nodes_scanned += 1
+            if self.settings.get("show_scan_progress", True) and hasattr(self, 'total_items') and (self.nodes_scanned % 100 == 0 or self.nodes_scanned == self.total_items):
+                self.after(0, lambda: (
+                    self.progress.config(value=self.nodes_scanned / self.total_items * 100),
+                    self.progress_label.config(text=f"Scanning: {self.nodes_scanned} / {self.total_items} items...")
+                ))
+
+        try:
+            entries = list(os.scandir(path))
+        except PermissionError:
+            messagebox.showerror("Scan Failed", f"Permission denied scanning {path}. Try running as administrator or scan a subdirectory.")
+            return node
+        except OSError as e:
+            messagebox.showerror("Scan Failed", f"Error scanning {path}: {e}")
+            return node
+
+        with self._nodes_scanned_lock:
+            self.nodes_scanned += 1
+            if self.settings.get("show_scan_progress", True) and hasattr(self, 'total_items') and (self.nodes_scanned % 100 == 0 or self.nodes_scanned == self.total_items):
+                self.after(0, lambda: (
+                    self.progress.config(value=self.nodes_scanned / self.total_items * 100),
+                    self.progress_label.config(text=f"Scanning: {self.nodes_scanned} / {self.total_items} items...")
+                ))
 
         try:
             entries = list(os.scandir(path))
@@ -580,10 +645,13 @@ class Quantifile(tk.Tk):
         dirs = []
         files = []
         for entry in entries:
-            if entry.is_dir(follow_symlinks=False):
-                dirs.append(entry)
-            else:
-                files.append(entry)
+            try:
+                if entry.is_dir(follow_symlinks=False):
+                    dirs.append(entry)
+                else:
+                    files.append(entry)
+            except OSError:
+                pass  # Skip entries that can't be accessed
 
         for entry in files:
             if self.scan_aborted:
@@ -593,10 +661,16 @@ class Quantifile(tk.Tk):
                 child.size = entry.stat().st_size
                 node.children.append(child)
                 node.size += child.size
-                with self._nodes_scanned_lock:
-                    self.nodes_scanned += 1
             except OSError:
                 pass
+            else:
+                with self._nodes_scanned_lock:
+                    self.nodes_scanned += 1
+                    if self.settings.get("show_scan_progress", True) and hasattr(self, 'total_items') and (self.nodes_scanned % 100 == 0 or self.nodes_scanned == self.total_items):
+                        self.after(0, lambda: (
+                            self.progress.config(value=self.nodes_scanned / self.total_items * 100),
+                            self.progress_label.config(text=f"Scanning: {self.nodes_scanned} / {self.total_items} items...")
+                        ))
 
         if dirs and not self.scan_aborted:
             def scan_dir(entry):
@@ -634,6 +708,34 @@ class Quantifile(tk.Tk):
         self.root_node = node
         self.selected_node = None
 
+        # Add free space node if toggle is on and it's a drive root
+        if self.show_free_space_toggle:
+            drive, _ = os.path.splitdrive(self.root_node.path)
+            if drive and os.path.basename(self.root_node.path) == "":
+                # It's a drive root like "C:\" or "W:\"
+                try:
+                    if hasattr(os, 'statvfs'):
+                        stat = os.statvfs(self.root_node.path)
+                        free = stat.f_bavail * stat.f_frsize
+                    else:
+                        import ctypes
+                        free_bytes = ctypes.c_ulonglong(0)
+                        total_bytes = ctypes.c_ulonglong(0)
+                        ctypes.windll.kernel32.GetDiskFreeSpaceExW(
+                            self.root_node.path, None, ctypes.byref(total_bytes), ctypes.byref(free_bytes)
+                        )
+                        free = free_bytes.value
+                    if free > 0:
+                        free_node = Node("", False)
+                        free_node.name = "Free Space"
+                        free_node.size = free
+                        self.root_node.children.append(free_node)
+                        self.root_node.children.sort(key=lambda n: n.size, reverse=True)
+                except Exception:
+                    pass  # Ignore errors, don't add free space
+
+
+
         self.animate_zoom(old_current, node)
 
     def rescan(self):
@@ -666,6 +768,8 @@ class Quantifile(tk.Tk):
             "min_density": 1,
             "disable_delete": False,
             "remember_window_pos": True,
+            "fullscreen": False,
+            "show_scan_progress": True,
             "animated_zoom": False,
             "auto_rescan_on_delete": True,
             "dir_color": "",
@@ -693,6 +797,10 @@ class Quantifile(tk.Tk):
     def apply_geometry(self):
         """Restore window position and size if remembered."""
         if self.settings.get("remember_window_pos", True):
+            fullscreen = self.settings.get("fullscreen", False)
+            if fullscreen:
+                self.state("zoomed")
+                return
             # Try saved geometry
             geom = self.settings.get("window_geometry")
             if geom:
@@ -718,7 +826,13 @@ class Quantifile(tk.Tk):
     def on_close(self):
         """Save window position before exiting."""
         if self.settings.get("remember_window_pos", True):
-            self.settings["window_geometry"] = self.geometry()
+            fullscreen = self.state() == "zoomed"
+            self.settings["fullscreen"] = fullscreen
+            if not fullscreen:
+                self.settings["window_geometry"] = self.geometry()
+            else:
+                # Clear geometry if maximized
+                self.settings.pop("window_geometry", None)
             self.save_settings()
         self.destroy()
 
@@ -763,16 +877,13 @@ class Quantifile(tk.Tk):
     def show_settings(self):
         settings_win = tk.Toplevel(self)
         settings_win.title("Settings")
-        settings_win.geometry("440x440")
+        width, height = 440, 440
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        settings_win.geometry(f"{width}x{height}+{x}+{y}")
         settings_win.transient(self)
         settings_win.grab_set()
         settings_win.resizable(False, False)
-
-        settings_win.update_idletasks()
-        width, height = 440, 440
-        x = (settings_win.winfo_screenwidth() // 2) - (width // 2)
-        y = (settings_win.winfo_screenheight() // 2) - (height // 2)
-        settings_win.geometry(f"+{x}+{y}")
 
         main_frame = ttk.Frame(settings_win, padding=20)
         main_frame.pack(fill="both", expand=True)
@@ -805,6 +916,9 @@ class Quantifile(tk.Tk):
         self.remember_pos_var = tk.BooleanVar(value=self.settings.get("remember_window_pos", True))
         ttk.Checkbutton(main_frame, text="Remember window position", variable=self.remember_pos_var).pack(anchor="w", pady=2)
 
+        self.show_scan_progress_var = tk.BooleanVar(value=self.settings.get("show_scan_progress", True))
+        ttk.Checkbutton(main_frame, text="Show scan progress details", variable=self.show_scan_progress_var).pack(anchor="w", pady=2)
+
         self.animated_zoom_var = tk.BooleanVar(value=self.settings.get("animated_zoom", False))
         ttk.Checkbutton(main_frame, text="Animated zoom in/out", variable=self.animated_zoom_var).pack(anchor="w", pady=2)
 
@@ -818,11 +932,15 @@ class Quantifile(tk.Tk):
             self.settings["min_density"] = self.density_var.get()
             self.settings["disable_delete"] = self.disable_delete_var.get()
             self.settings["remember_window_pos"] = self.remember_pos_var.get()
+            self.settings["show_scan_progress"] = self.show_scan_progress_var.get()
             self.settings["animated_zoom"] = self.animated_zoom_var.get()
             self.settings["auto_rescan_on_delete"] = self.auto_rescan_var.get()
             self.settings["dark_mode"] = (self.theme_var.get() == "dark")
             self.dark_mode = self.settings["dark_mode"]
             self.save_settings()
+            self.apply_theme()
+            if self.current_node:
+                self.draw()
             settings_win.destroy()
 
         def cancel_and_close():
@@ -837,7 +955,11 @@ class Quantifile(tk.Tk):
     def show_about(self):
         about_win = tk.Toplevel(self)
         about_win.title("About Quantifile")
-        about_win.geometry("320x240")
+        width = 500
+        height = 550  # Increased height for more text
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        about_win.geometry(f"{width}x{height}+{x}+{y}")
         about_win.transient(self)
         about_win.grab_set()
         about_win.resizable(False, False)
@@ -854,23 +976,51 @@ class Quantifile(tk.Tk):
         except tk.TclError:
             pass
 
-        ttk.Label(main_frame, text="Quantifile", font=("Segoe UI", 14, "bold")).pack()
-        ttk.Label(main_frame, text="Disk space visualization tool", font=("Segoe UI", 9)).pack(pady=(0, 10))
-        ttk.Label(main_frame, text="Version 1.0", font=("Segoe UI", 9)).pack()
+        ttk.Label(main_frame, text="Quantifile", font=("", 14, "bold")).pack()
+        ttk.Label(main_frame, text="Disk space visualization tool inspired by SpaceMonger 1.4.0").pack(pady=(0, 5))
+        ttk.Label(main_frame, text="Explore and analyze directory structures with interactive treemaps.").pack(pady=(0, 10))
+        ttk.Label(main_frame, text="© 2026 Jan-Erik Labbas. All rights reserved.").pack(pady=(0, 5))
+        ttk.Label(main_frame, text="Licensed under MIT License.").pack(pady=(0, 5))
+        paypal_label = ttk.Label(main_frame, text="Support me on PayPal: paypal.me/jamps3", cursor="hand2", foreground="#0000FF")
+        paypal_label.pack(pady=(0, 10))
+        paypal_label.bind("<Button-1>", lambda e: self.open_paypal())
+        ttk.Label(main_frame, text="Version 1.0").pack(pady=(0, 10))
 
-        ttk.Button(main_frame, text="Close", command=about_win.destroy).pack(pady=(20, 0))
+        ttk.Button(main_frame, text="Close", command=about_win.destroy).pack(pady=(10, 0))
 
         about_win.protocol("WM_DELETE_WINDOW", about_win.destroy)
 
-        about_win.update_idletasks()
-        width = 320
-        height = 240
-        x = (about_win.winfo_screenwidth() // 2) - (width // 2)
-        y = (about_win.winfo_screenheight() // 2) - (height // 2)
-        about_win.geometry(f"+{x}+{y}")
-
     def on_theme_change(self, theme):
         self.toggle_dark_mode(theme == "dark")
+
+    def open_paypal(self):
+        import webbrowser
+        webbrowser.open("https://paypal.me/jamps3")
+
+    def show_properties(self):
+        node = self.selected_node
+        if not node or not node.path:
+            return
+        try:
+            if sys.platform.startswith("win"):
+                import ctypes
+                ctypes.windll.shell32.ShellExecuteW(None, "properties", node.path, None, None, 1)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", "-R", node.path], check=False)
+            else:
+                # Linux, try common file managers
+                success = False
+                for cmd in [["nautilus", "--properties", node.path], ["dolphin", "--properties", node.path], ["thunar", "--properties", node.path]]:
+                    try:
+                        subprocess.run(cmd, check=False)
+                        success = True
+                        break
+                    except FileNotFoundError:
+                        continue
+                if not success:
+                    messagebox.showinfo("Properties", "Properties dialog not supported on this system.")
+        except Exception as e:
+            messagebox.showerror("Properties", f"Could not open properties: {e}")
 
     def get_file_category(self, filename):
         """Return file type category based on extension."""
@@ -892,6 +1042,10 @@ class Quantifile(tk.Tk):
         return "other"
 
     def color_for_node(self, node, depth):
+        # Special case for free space
+        if node.name == "Free Space":
+            return "#888888" if self.dark_mode else "#c0c0c0"  # Distinct gray
+
         # Directories: check dir_color custom first
         if node.is_dir:
             custom = self.settings.get("dir_color", "")
@@ -1051,7 +1205,7 @@ class Quantifile(tk.Tk):
         if node:
             self.selected_node = node
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-            self.status.config(text=f"{scan_mode}: {node.path} — {human_size(node.size)}")
+            self.status.config(text=f"{scan_mode}: {self.truncate_text(node.path)} — {human_size(node.size)}")
             self.draw()
 
     def animate_zoom(self, old_node, new_node, steps=10, duration=150):
@@ -1150,7 +1304,71 @@ class Quantifile(tk.Tk):
 
     def _update_status(self, node):
         scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-        self.status.config(text=f"{scan_mode}: {node.path} — {human_size(node.size)}")
+        if node.is_dir:
+            self.status.config(text=f"{scan_mode}: {self.truncate_text(node.path)} — {human_size(node.size)} ({len(node.children)} items)")
+        else:
+            self.status.config(text=f"{scan_mode}: {self.truncate_text(node.path)} — {human_size(node.size)}")
+
+    def on_enter(self, event):
+        if self.selected_node:
+            if self.selected_node.is_dir:
+                self.animate_zoom(self.current_node, self.selected_node)
+            else:
+                self.open_selected()
+        else:
+            self.choose_folder()
+
+    def on_arrow(self, event):
+        if not self.selected_node:
+            return
+
+        # Find current rect
+        current_rect = None
+        for r, n in self.rect_nodes.items():
+            if n == self.selected_node:
+                current_rect = r
+                break
+        if not current_rect:
+            return
+
+        current_bbox = self.canvas.bbox(current_rect)
+        if not current_bbox:
+            return
+
+        cx = (current_bbox[0] + current_bbox[2]) / 2
+        cy = (current_bbox[1] + current_bbox[3]) / 2
+        current_width = current_bbox[2] - current_bbox[0]
+        current_height = current_bbox[3] - current_bbox[1]
+
+        candidates = []
+        for r, n in self.rect_nodes.items():
+            if r == current_rect:
+                continue
+            bbox = self.canvas.bbox(r)
+            if not bbox:
+                continue
+            rx = (bbox[0] + bbox[2]) / 2
+            ry = (bbox[1] + bbox[3]) / 2
+            if event.keysym == "Right" and rx > cx and abs(ry - cy) < current_height / 2:
+                candidates.append((r, rx, ry))
+            elif event.keysym == "Left" and rx < cx and abs(ry - cy) < current_height / 2:
+                candidates.append((r, rx, ry))
+            elif event.keysym == "Down" and ry > cy and abs(rx - cx) < current_width / 2:
+                candidates.append((r, ry, rx))
+            elif event.keysym == "Up" and ry < cy and abs(rx - cx) < current_width / 2:
+                candidates.append((r, ry, rx))
+
+        if not candidates:
+            return
+
+        # Find closest in the band
+        if event.keysym in ("Left", "Right"):
+            closest = min(candidates, key=lambda c: abs(c[1] - cx))  # Closest in x
+        else:
+            closest = min(candidates, key=lambda c: abs(c[1] - cy))  # Closest in y
+
+        self.selected_node = self.rect_nodes[closest[0]]
+        self.draw()
 
     def on_double_click(self, event):
         node = self.node_at_event(event)
@@ -1167,9 +1385,12 @@ class Quantifile(tk.Tk):
 
         if node:
             self.canvas.config(cursor="hand2")
-            self.status.config(text=f"{node.path} — {human_size(node.size)}")
+            self.status.config(text=f"{self.truncate_text(node.path)} — {human_size(node.size)}")
         else:
             self.canvas.config(cursor="")
+            if self.current_node:
+                scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
+                self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)}")
 
     def toggle_quick_zoom(self):
         self.quick_zoom_mode = not self.quick_zoom_mode
@@ -1178,6 +1399,59 @@ class Quantifile(tk.Tk):
             self.quick_zoom_button.config(text="Quick Zoom (ON)")
         else:
             self.quick_zoom_button.config(text="Quick Zoom (OFF)")
+
+    def toggle_free_space(self):
+        self.show_free_space_toggle = not self.show_free_space_toggle
+        if self.show_free_space_toggle:
+            self.free_space_button.config(text="Free Space (ON)")
+            if self.current_node == self.root_node:
+                self.add_free_space_node()
+            else:
+                messagebox.showinfo("Free Space", "Free space visualization is only available at the drive root level.")
+        else:
+            self.free_space_button.config(text="Free Space (OFF)")
+            if self.current_node == self.root_node:
+                self.remove_free_space_node()
+        # Redraw
+        if self.current_node:
+            self.draw()
+
+    def add_free_space_node(self):
+        if not self.root_node or self.current_node != self.root_node:
+            return  # Only add at root level
+        drive, _ = os.path.splitdrive(self.root_node.path)
+        if not (drive and os.path.basename(self.root_node.path) == ""):
+            return  # Not a drive root
+        # Check if free space node already exists
+        for child in self.root_node.children:
+            if child.name == "Free Space":
+                return  # Already added
+        # Add free space node
+        try:
+            if hasattr(os, 'statvfs'):
+                stat = os.statvfs(self.root_node.path)
+                free = stat.f_bavail * stat.f_frsize
+            else:
+                import ctypes
+                free_bytes = ctypes.c_ulonglong(0)
+                total_bytes = ctypes.c_ulonglong(0)
+                ctypes.windll.kernel32.GetDiskFreeSpaceExW(
+                    self.root_node.path, None, ctypes.byref(total_bytes), ctypes.byref(free_bytes)
+                )
+                free = free_bytes.value
+            if free > 0:
+                free_node = Node("", False)
+                free_node.name = "Free Space"
+                free_node.size = free
+                self.root_node.children.append(free_node)
+                self.root_node.children.sort(key=lambda n: n.size, reverse=True)
+        except Exception:
+            pass  # Don't add if calculation fails
+
+    def remove_free_space_node(self):
+        if not self.root_node:
+            return
+        self.root_node.children = [child for child in self.root_node.children if child.name != "Free Space"]
 
     def on_right_click(self, event):
         if self.quick_zoom_mode:
@@ -1188,6 +1462,9 @@ class Quantifile(tk.Tk):
     def show_context_menu(self, event):
         if not self.context_menu:
             self.context_menu = tk.Menu(self, tearoff=0)
+            self.context_menu.add_command(label="Open", command=self.open_in_manager)
+            self.context_menu.add_command(label="Properties", command=self.show_properties)
+            self.context_menu.add_separator()
             self.context_menu.add_command(label="Go Up", command=self.zoom_out)
             # Could add more items here in the future
 
@@ -1221,7 +1498,11 @@ class Quantifile(tk.Tk):
     def open_selected(self):
         node = self.selected_node
 
-        if not node:
+        if not node or not node.path:
+            # Free space node or no selection
+            if node and node.name == "Free Space":
+                # Show free space info
+                self.show_free_space()
             return
 
         try:
@@ -1234,10 +1515,29 @@ class Quantifile(tk.Tk):
         except Exception as e:
             messagebox.showerror("Open failed", str(e))
 
+    def open_in_manager(self):
+        node = self.selected_node
+
+        if not node or not node.path:
+            return
+
+        try:
+            if sys.platform.startswith("win"):
+                if os.path.isdir(node.path):
+                    subprocess.run(["explorer", node.path], check=False)
+                else:
+                    subprocess.run(["explorer", "/select," + node.path], check=False)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", node.path], check=False)
+            else:
+                subprocess.run(["xdg-open", node.path], check=False)
+        except Exception as e:
+            messagebox.showerror("Open failed", str(e))
+
     def delete_selected(self):
         node = self.selected_node
 
-        if not node:
+        if not node or not node.path:
             return
 
         if self.settings.get("disable_delete", False):
@@ -1354,13 +1654,18 @@ class Quantifile(tk.Tk):
                         fill = self.canvas.itemcget(item, "fill")
                         font_str = self.canvas.itemcget(item, "font")
                         font_parts = font_str.split()
-                        if len(font_parts) >= 3:
-                            size = font_parts[-1]
-                            family = " ".join(font_parts[:-1])
+                        if len(font_parts) >= 2:
+                            size_str = font_parts[-1]
+                            family = " ".join(font_parts[:-1]).strip("{}")
                         else:
-                            size = "8"
-                            family = font_str
-                        svg_lines.append(f'  <text x="{x}" y="{y}"')
+                            size_str = "8"
+                            family = font_str.strip("{}")
+                        try:
+                            size = int(size_str)
+                        except ValueError:
+                            size = 8
+                        # Use dominant-baseline="hanging" to match Tkinter's anchor="nw" (top-left alignment)
+                        svg_lines.append(f'  <text x="{x}" y="{y}" dominant-baseline="hanging"')
                         if family:
                             svg_lines.append(f'        font-family="{family}"')
                         svg_lines.append(f'        font-size="{size}" fill="{fill}">{text}</text>')
@@ -1380,15 +1685,12 @@ class Quantifile(tk.Tk):
         """Dialog for customizing colors."""
         colors_win = tk.Toplevel(self)
         colors_win.title("Color Settings")
-        colors_win.geometry("420x500")
+        width, height = 420, 500
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        colors_win.geometry(f"{width}x{height}+{x}+{y}")
         colors_win.transient(self)
         colors_win.grab_set()
-
-        colors_win.update_idletasks()
-        width, height = 420, 500
-        x = (colors_win.winfo_screenwidth() // 2) - (width // 2)
-        y = (colors_win.winfo_screenheight() // 2) - (height // 2)
-        colors_win.geometry(f"+{x}+{y}")
 
         main_frame = ttk.Frame(colors_win, padding=20)
         main_frame.pack(fill="both", expand=True)
@@ -1430,7 +1732,9 @@ class Quantifile(tk.Tk):
             self.settings["label_color"] = label_color_var.get()
             self.settings["canvas_bg"] = canvas_bg_var.get()
             self.save_settings()
-            messagebox.showinfo("Colors", "Colors saved. Restart application to apply all changes.")
+            self.apply_theme()
+            if self.current_node:
+                self.draw()
             colors_win.destroy()
 
         ttk.Button(button_frame, text="Save", command=save_colors).pack(side="right", padx=(5, 0))
@@ -1440,16 +1744,13 @@ class Quantifile(tk.Tk):
         """Dialog for configuring file type category colors."""
         ft_win = tk.Toplevel(self)
         ft_win.title("File Type Colors")
-        ft_win.geometry("450x400")
+        width, height = 450, 400
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        ft_win.geometry(f"{width}x{height}+{x}+{y}")
         ft_win.transient(self)
         ft_win.grab_set()
         ft_win.resizable(False, False)
-
-        ft_win.update_idletasks()
-        width, height = 450, 400
-        x = (ft_win.winfo_screenwidth() // 2) - (width // 2)
-        y = (ft_win.winfo_screenheight() // 2) - (height // 2)
-        ft_win.geometry(f"+{x}+{y}")
 
         main_frame = ttk.Frame(ft_win, padding=20)
         main_frame.pack(fill="both", expand=True)
