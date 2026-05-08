@@ -64,7 +64,7 @@ python main.py
 | **Settings** | Click "Settings" button |
 | **About** | Click "About" button |
 | **Select item** | Click on a rectangle |
-| **Right-click on item** | Opens context menu (Open in file manager, Properties, Go Up) |
+| **Right-click on item** | Opens context menu (Open file, Show in Explorer, Go Up) |
 | **Hover for info** | Move mouse over rectangles |
 
 ### How It Works

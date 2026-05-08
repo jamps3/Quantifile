@@ -1462,8 +1462,8 @@ class Quantifile(tk.Tk):
     def show_context_menu(self, event):
         if not self.context_menu:
             self.context_menu = tk.Menu(self, tearoff=0)
-            self.context_menu.add_command(label="Open", command=self.open_in_manager)
-            self.context_menu.add_command(label="Properties", command=self.show_properties)
+            self.context_menu.add_command(label="Open", command=self.open_selected)
+            self.context_menu.add_command(label="Show in Explorer", command=self.open_in_manager)
             self.context_menu.add_separator()
             self.context_menu.add_command(label="Go Up", command=self.zoom_out)
             # Could add more items here in the future
@@ -1523,10 +1523,7 @@ class Quantifile(tk.Tk):
 
         try:
             if sys.platform.startswith("win"):
-                if os.path.isdir(node.path):
-                    subprocess.run(["explorer", node.path], check=False)
-                else:
-                    subprocess.run(["explorer", "/select," + node.path], check=False)
+                os.startfile(node.path, 'explore')
             elif sys.platform == "darwin":
                 subprocess.run(["open", node.path], check=False)
             else:
