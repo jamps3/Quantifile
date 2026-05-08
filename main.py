@@ -4,9 +4,10 @@ import math
 import json
 import threading
 import subprocess
+import time
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from concurrent.futures import ThreadPoolExecutor
+from tkinter import ttk, filedialog, messagebox, colorchooser
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 
 class Node:
@@ -40,14 +41,12 @@ def scan_path(path):
             node.size = 0
         return node
 
-        try:
-            entries = list(os.scandir(path))
-        except PermissionError:
-            messagebox.showerror("Scan Failed", f"Permission denied scanning {path}. Try running as administrator or scan a subdirectory.")
-            return node
-        except OSError as e:
-            messagebox.showerror("Scan Failed", f"Error scanning {path}: {e}")
-            return node
+    try:
+        entries = list(os.scandir(path))
+    except PermissionError:
+        return node
+    except OSError:
+        return node
 
     for entry in entries:
         try:
@@ -469,11 +468,12 @@ class Quantifile(tk.Tk):
         self.canvas.delete("all")
 
         def worker():
+            self.start_time = time.time()
             total = self.count_items(path)
             self.total_items = total
             show_progress = self.settings.get("show_scan_progress", True)
             if show_progress:
-                self.after(0, lambda: self.progress_label.config(text=f"Scanning: 0 / {total} items..."))
+                self.after(0, lambda: self.progress_label.config(text=f"Scanning: 0 / {total} items (0.0s elapsed)..."))
             else:
                 self.after(0, lambda: self.progress_label.config(text="Scanning..."))
             node = self.scan_path_with_progress(path)
@@ -592,102 +592,147 @@ class Quantifile(tk.Tk):
         node.children.sort(key=lambda n: n.size, reverse=True) if node.children else None
         return node
 
-    def scan_path_with_progress(self, path):
-        """Scan with node counting and abort capability."""
-        node = Node(path, os.path.isdir(path))
+    def update_scan_progress(self):
+        if not self.settings.get("show_scan_progress", True):
+            return
+        if not hasattr(self, "total_items") or self.total_items <= 0:
+            return
+        if self.nodes_scanned % 100 != 0 and self.nodes_scanned != self.total_items:
+            return
 
-        if not node.is_dir:
-            try:
-                node.size = os.path.getsize(path)
-            except OSError:
-                node.size = 0
-            with self._nodes_scanned_lock:
-                self.nodes_scanned += 1
-                if self.settings.get("show_scan_progress", True) and hasattr(self, 'total_items') and (self.nodes_scanned % 100 == 0 or self.nodes_scanned == self.total_items):
-                    self.after(0, lambda: (
-                        self.progress.config(value=self.nodes_scanned / self.total_items * 100),
-                        self.progress_label.config(text=f"Scanning: {self.nodes_scanned} / {self.total_items} items...")
-                    ))
-            return node
+        elapsed = time.time() - self.start_time
+        progress = min(1, self.nodes_scanned / self.total_items)
+        eta_str = ""
+        if progress > 0:
+            eta = elapsed / progress * (1 - progress)
+            eta_str = f", {eta:.1f}s ETA"
 
+        self.after(0, lambda: (
+            self.progress.config(value=progress * 100),
+            self.progress_label.config(
+                text=(
+                    f"Scanning: {self.nodes_scanned} / {self.total_items} "
+                    f"items ({elapsed:.1f}s elapsed{eta_str})"
+                )
+            )
+        ))
+
+    def increment_nodes_scanned(self, amount=1):
         with self._nodes_scanned_lock:
-            self.nodes_scanned += 1
-            if self.settings.get("show_scan_progress", True) and hasattr(self, 'total_items') and (self.nodes_scanned % 100 == 0 or self.nodes_scanned == self.total_items):
-                self.after(0, lambda: (
-                    self.progress.config(value=self.nodes_scanned / self.total_items * 100),
-                    self.progress_label.config(text=f"Scanning: {self.nodes_scanned} / {self.total_items} items...")
-                ))
+            self.nodes_scanned += amount
+            self.update_scan_progress()
 
+    def scan_file_node(self, path):
+        node = Node(path, False)
         try:
-            entries = list(os.scandir(path))
-        except PermissionError:
-            messagebox.showerror("Scan Failed", f"Permission denied scanning {path}. Try running as administrator or scan a subdirectory.")
-            return node
-        except OSError as e:
-            messagebox.showerror("Scan Failed", f"Error scanning {path}: {e}")
-            return node
-
-        with self._nodes_scanned_lock:
-            self.nodes_scanned += 1
-            if self.settings.get("show_scan_progress", True) and hasattr(self, 'total_items') and (self.nodes_scanned % 100 == 0 or self.nodes_scanned == self.total_items):
-                self.after(0, lambda: (
-                    self.progress.config(value=self.nodes_scanned / self.total_items * 100),
-                    self.progress_label.config(text=f"Scanning: {self.nodes_scanned} / {self.total_items} items...")
-                ))
-
-        try:
-            entries = list(os.scandir(path))
-        except PermissionError:
-            return node
+            node.size = os.path.getsize(path)
         except OSError:
-            return node
+            node.size = 0
+        self.increment_nodes_scanned()
+        return node
 
-        dirs = []
-        files = []
+    def scan_directory_level(self, path):
+        node = Node(path, True)
+        child_dirs = []
+        self.increment_nodes_scanned()
+
+        try:
+            entries = list(os.scandir(path))
+        except PermissionError:
+            self.after(0, lambda: messagebox.showerror(
+                "Scan Failed",
+                f"Permission denied scanning {path}. Try running as "
+                "administrator or scan a subdirectory."
+            ))
+            return node, child_dirs
+        except OSError as e:
+            self.after(0, lambda: messagebox.showerror(
+                "Scan Failed",
+                f"Error scanning {path}: {e}"
+            ))
+            return node, child_dirs
+
         for entry in entries:
+            if self.scan_aborted:
+                break
             try:
                 if entry.is_dir(follow_symlinks=False):
-                    dirs.append(entry)
+                    child_dirs.append(entry.path)
                 else:
-                    files.append(entry)
-            except OSError:
-                pass  # Skip entries that can't be accessed
-
-        for entry in files:
-            if self.scan_aborted:
-                return node
-            try:
-                child = Node(entry.path, False)
-                child.size = entry.stat().st_size
-                node.children.append(child)
-                node.size += child.size
+                    child = Node(entry.path, False)
+                    try:
+                        child.size = entry.stat().st_size
+                    except OSError:
+                        child.size = 0
+                    node.children.append(child)
+                    node.size += child.size
+                    self.increment_nodes_scanned()
             except OSError:
                 pass
-            else:
-                with self._nodes_scanned_lock:
-                    self.nodes_scanned += 1
-                    if self.settings.get("show_scan_progress", True) and hasattr(self, 'total_items') and (self.nodes_scanned % 100 == 0 or self.nodes_scanned == self.total_items):
-                        self.after(0, lambda: (
-                            self.progress.config(value=self.nodes_scanned / self.total_items * 100),
-                            self.progress_label.config(text=f"Scanning: {self.nodes_scanned} / {self.total_items} items...")
-                        ))
 
-        if dirs and not self.scan_aborted:
-            def scan_dir(entry):
-                try:
-                    return self.scan_path_with_progress(entry.path)
-                except OSError:
-                    return None
+        return node, child_dirs
 
-            with ThreadPoolExecutor(max_workers=min(len(dirs), 8)) as executor:
-                results = list(executor.map(scan_dir, dirs))
-                for child in results:
-                    if child:
-                        node.children.append(child)
-                        node.size += child.size
+    def recompute_directory_sizes(self, node):
+        if not node.is_dir:
+            return node.size
 
+        node.size = sum(self.recompute_directory_sizes(child) for child in node.children)
         node.children.sort(key=lambda n: n.size, reverse=True)
-        return node
+        return node.size
+
+    def scan_path_with_progress(self, path):
+        """Scan with node counting and abort capability."""
+        try:
+            max_threads = int(self.settings.get("max_scan_threads", 6))
+        except (TypeError, ValueError):
+            max_threads = 6
+        max_threads = max(1, min(32, max_threads))
+
+        if not os.path.isdir(path):
+            return self.scan_file_node(path)
+
+        root_node = None
+        all_dirs = []
+
+        with ThreadPoolExecutor(max_workers=max_threads) as executor:
+            pending = {
+                executor.submit(self.scan_directory_level, path): None
+            }
+
+            while pending and not self.scan_aborted:
+                done, _ = wait(pending, return_when=FIRST_COMPLETED)
+                for future in done:
+                    parent = pending.pop(future)
+                    try:
+                        node, child_dirs = future.result()
+                    except OSError:
+                        continue
+
+                    all_dirs.append(node)
+                    if parent is None:
+                        root_node = node
+                    else:
+                        parent.children.append(node)
+                        parent.size += node.size
+
+                    for child_path in child_dirs:
+                        if self.scan_aborted:
+                            break
+                        pending[executor.submit(
+                            self.scan_directory_level,
+                            child_path
+                        )] = node
+
+        if self.scan_aborted:
+            for future in pending:
+                future.cancel()
+
+        if root_node is None:
+            root_node = Node(path, True)
+
+        self.recompute_directory_sizes(root_node)
+
+        return root_node
 
 
 
@@ -770,6 +815,7 @@ class Quantifile(tk.Tk):
             "remember_window_pos": True,
             "fullscreen": False,
             "show_scan_progress": True,
+            "max_scan_threads": 6,
             "animated_zoom": False,
             "auto_rescan_on_delete": True,
             "dir_color": "",
@@ -786,7 +832,8 @@ class Quantifile(tk.Tk):
                 "archive": "#cccc00",
                 "executable": "#cc00cc",
                 "code": "#00cccc",
-                "text": "#aaaaaa"
+                "text": "#aaaaaa",
+                "other": ""
             }
         }
         for key, value in defaults.items():
@@ -877,7 +924,7 @@ class Quantifile(tk.Tk):
     def show_settings(self):
         settings_win = tk.Toplevel(self)
         settings_win.title("Settings")
-        width, height = 440, 440
+        width, height = 440, 500
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         settings_win.geometry(f"{width}x{height}+{x}+{y}")
@@ -919,6 +966,10 @@ class Quantifile(tk.Tk):
         self.show_scan_progress_var = tk.BooleanVar(value=self.settings.get("show_scan_progress", True))
         ttk.Checkbutton(main_frame, text="Show scan progress details", variable=self.show_scan_progress_var).pack(anchor="w", pady=2)
 
+        ttk.Label(main_frame, text="Maximum scan threads:").pack(anchor="w", pady=(10, 2))
+        self.max_threads_var = tk.IntVar(value=self.settings.get("max_scan_threads", 6))
+        ttk.Spinbox(main_frame, from_=1, to=32, textvariable=self.max_threads_var, width=5).pack(anchor="w", pady=(0, 10))
+
         self.animated_zoom_var = tk.BooleanVar(value=self.settings.get("animated_zoom", False))
         ttk.Checkbutton(main_frame, text="Animated zoom in/out", variable=self.animated_zoom_var).pack(anchor="w", pady=2)
 
@@ -933,6 +984,7 @@ class Quantifile(tk.Tk):
             self.settings["disable_delete"] = self.disable_delete_var.get()
             self.settings["remember_window_pos"] = self.remember_pos_var.get()
             self.settings["show_scan_progress"] = self.show_scan_progress_var.get()
+            self.settings["max_scan_threads"] = self.max_threads_var.get()
             self.settings["animated_zoom"] = self.animated_zoom_var.get()
             self.settings["auto_rescan_on_delete"] = self.auto_rescan_var.get()
             self.settings["dark_mode"] = (self.theme_var.get() == "dark")
@@ -998,29 +1050,7 @@ class Quantifile(tk.Tk):
         webbrowser.open("https://paypal.me/jamps3")
 
     def show_properties(self):
-        node = self.selected_node
-        if not node or not node.path:
-            return
-        try:
-            if sys.platform.startswith("win"):
-                import ctypes
-                ctypes.windll.shell32.ShellExecuteW(None, "properties", node.path, None, None, 1)
-            elif sys.platform == "darwin":
-                subprocess.run(["open", "-R", node.path], check=False)
-            else:
-                # Linux, try common file managers
-                success = False
-                for cmd in [["nautilus", "--properties", node.path], ["dolphin", "--properties", node.path], ["thunar", "--properties", node.path]]:
-                    try:
-                        subprocess.run(cmd, check=False)
-                        success = True
-                        break
-                    except FileNotFoundError:
-                        continue
-                if not success:
-                    messagebox.showinfo("Properties", "Properties dialog not supported on this system.")
-        except Exception as e:
-            messagebox.showerror("Properties", f"Could not open properties: {e}")
+        messagebox.showinfo("Properties", "Properties dialog is not supported in this version.")
 
     def get_file_category(self, filename):
         """Return file type category based on extension."""
@@ -1041,6 +1071,30 @@ class Quantifile(tk.Tk):
                 return category
         return "other"
 
+    def normalize_color(self, color_value):
+        color_value = color_value.strip()
+        if not color_value:
+            return ""
+
+        if color_value.startswith("#") and len(color_value) == 7:
+            try:
+                int(color_value[1:], 16)
+                return color_value
+            except ValueError:
+                return ""
+
+        if "," in color_value:
+            try:
+                r, g, b = [int(x.strip()) for x in color_value.split(",")]
+                r = max(0, min(255, r))
+                g = max(0, min(255, g))
+                b = max(0, min(255, b))
+                return f"#{r:02x}{g:02x}{b:02x}"
+            except (ValueError, TypeError):
+                return ""
+
+        return ""
+
     def color_for_node(self, node, depth):
         # Special case for free space
         if node.name == "Free Space":
@@ -1048,16 +1102,9 @@ class Quantifile(tk.Tk):
 
         # Directories: check dir_color custom first
         if node.is_dir:
-            custom = self.settings.get("dir_color", "")
-            if custom and "," in custom:
-                try:
-                    r, g, b = [int(x.strip()) for x in custom.split(",")]
-                    r = max(0, min(255, r))
-                    g = max(0, min(255, g))
-                    b = max(0, min(255, b))
-                    return f"#{r:02x}{g:02x}{b:02x}"
-                except (ValueError, TypeError):
-                    pass
+            custom = self.normalize_color(self.settings.get("dir_color", ""))
+            if custom:
+                return custom
             # Use theme-based directory color
             if self.dark_mode:
                 base = 60 - min(depth * 6, 40)
@@ -1066,25 +1113,18 @@ class Quantifile(tk.Tk):
                 base = 180 - min(depth * 14, 120)
                 return f"#{base:02x}{220:02x}{255:02x}"
 
-        # Files: check custom file_color first
-        custom = self.settings.get("file_color", "")
-        if custom and "," in custom:
-            try:
-                r, g, b = [int(x.strip()) for x in custom.split(",")]
-                r = max(0, min(255, r))
-                g = max(0, min(255, g))
-                b = max(0, min(255, b))
-                return f"#{r:02x}{g:02x}{b:02x}"
-            except (ValueError, TypeError):
-                pass
-
         # Check file type category colors
         file_type_colors = self.settings.get("file_type_colors", {})
         if file_type_colors:
             category = self.get_file_category(node.name)
-            cat_color = file_type_colors.get(category)
+            cat_color = self.normalize_color(file_type_colors.get(category, ""))
             if cat_color:
                 return cat_color
+
+        # Files: check custom file_color fallback
+        custom = self.normalize_color(self.settings.get("file_color", ""))
+        if custom:
+            return custom
 
         # Use theme-based file color
         if self.dark_mode:
@@ -1454,6 +1494,11 @@ class Quantifile(tk.Tk):
         self.root_node.children = [child for child in self.root_node.children if child.name != "Free Space"]
 
     def on_right_click(self, event):
+        node = self.node_at_event(event)
+        if node:
+            self.selected_node = node
+            self.draw()
+
         if self.quick_zoom_mode:
             self.zoom_out()
         else:
@@ -1463,8 +1508,10 @@ class Quantifile(tk.Tk):
         if not self.context_menu:
             self.context_menu = tk.Menu(self, tearoff=0)
             self.context_menu.add_command(label="Open", command=self.open_selected)
-            self.context_menu.add_command(label="Show in Explorer", command=self.open_in_manager)
+            self.context_menu.add_command(label="Color", command=self.show_selected_color_dialog)
+            self.context_menu.add_command(label="Properties", command=self.show_properties)
             self.context_menu.add_separator()
+            self.context_menu.add_command(label="Show in Explorer", command=self.open_in_manager)
             self.context_menu.add_command(label="Go Up", command=self.zoom_out)
             # Could add more items here in the future
 
@@ -1495,6 +1542,91 @@ class Quantifile(tk.Tk):
         if parent:
             self.animate_zoom(self.current_node, parent)
 
+    def show_selected_color_dialog(self):
+        node = self.selected_node
+        if not node:
+            return
+
+        if node.name == "Free Space":
+            messagebox.showinfo("Color", "Free space uses a fixed color.")
+            return
+
+        is_dir = node.is_dir
+        category = self.get_file_category(node.name) if not is_dir else None
+        title = "Folder Color" if is_dir else f"{category.capitalize()} File Color"
+        setting_key = "dir_color" if is_dir else category
+        current_color = (
+            self.settings.get("dir_color", "")
+            if is_dir
+            else self.settings.get("file_type_colors", {}).get(category, "")
+        )
+        current_hex = self.normalize_color(current_color)
+
+        color_win = tk.Toplevel(self)
+        color_win.title(title)
+        width, height = 360, 220
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        color_win.geometry(f"{width}x{height}+{x}+{y}")
+        color_win.transient(self)
+        color_win.grab_set()
+        color_win.resizable(False, False)
+
+        main_frame = ttk.Frame(color_win, padding=20)
+        main_frame.pack(fill="both", expand=True)
+
+        label_text = "Set color for all folders." if is_dir else f"Set color for {category} files."
+        ttk.Label(main_frame, text=label_text).pack(anchor="w", pady=(0, 10))
+
+        color_var = tk.StringVar(value=current_hex)
+        entry = ttk.Entry(main_frame, textvariable=color_var)
+        entry.pack(fill="x", pady=(0, 10))
+
+        preview = tk.Canvas(main_frame, width=70, height=32, bg=current_hex or "#ffffff", relief="sunken", bd=1)
+        preview.pack(anchor="w", pady=(0, 10))
+
+        def update_preview(*args):
+            color = self.normalize_color(color_var.get())
+            try:
+                preview.configure(bg=color or "#ffffff")
+            except tk.TclError:
+                preview.configure(bg="#ffffff")
+
+        def pick_color():
+            initial_color = self.normalize_color(color_var.get()) or "#ffffff"
+            chosen = colorchooser.askcolor(color=initial_color, parent=color_win, title=title)[1]
+            if chosen:
+                color_var.set(chosen)
+
+        def save_color():
+            color = color_var.get().strip()
+            if color and not self.normalize_color(color):
+                messagebox.showerror("Invalid Color", "Use a hex color like #ff0000 or R,G,B values.")
+                return
+            if is_dir:
+                self.settings["dir_color"] = color
+            else:
+                self.settings.setdefault("file_type_colors", {})[setting_key] = color
+            self.save_settings()
+            if self.current_node:
+                self.draw()
+            color_win.destroy()
+
+        def reset_color():
+            color_var.set("")
+            save_color()
+
+        color_var.trace_add("write", update_preview)
+
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill="x", pady=(5, 0))
+        ttk.Button(button_frame, text="Choose...", command=pick_color).pack(side="left")
+        ttk.Button(button_frame, text="Reset", command=reset_color).pack(side="left", padx=(5, 0))
+        ttk.Button(button_frame, text="Save", command=save_color).pack(side="right", padx=(5, 0))
+        ttk.Button(button_frame, text="Cancel", command=color_win.destroy).pack(side="right")
+
+        color_win.protocol("WM_DELETE_WINDOW", color_win.destroy)
+
     def open_selected(self):
         node = self.selected_node
 
@@ -1523,7 +1655,9 @@ class Quantifile(tk.Tk):
 
         try:
             if sys.platform.startswith("win"):
-                os.startfile(node.path, 'explore')
+                # Open the containing folder
+                folder = node.path if os.path.isdir(node.path) else os.path.dirname(node.path)
+                os.startfile(folder, 'explore')
             elif sys.platform == "darwin":
                 subprocess.run(["open", node.path], check=False)
             else:
@@ -1692,11 +1826,11 @@ class Quantifile(tk.Tk):
         main_frame = ttk.Frame(colors_win, padding=20)
         main_frame.pack(fill="both", expand=True)
 
-        ttk.Label(main_frame, text="Directory Color (R,G,B):").pack(anchor="w")
+        ttk.Label(main_frame, text="Directory Color (hex or R,G,B):").pack(anchor="w")
         dir_color_var = tk.StringVar(value=self.settings.get("dir_color", ""))
         ttk.Entry(main_frame, textvariable=dir_color_var).pack(fill="x", pady=(0, 10))
 
-        ttk.Label(main_frame, text="File Color (R,G,B):").pack(anchor="w")
+        ttk.Label(main_frame, text="File Color (hex or R,G,B fallback):").pack(anchor="w")
         file_color_var = tk.StringVar(value=self.settings.get("file_color", ""))
         ttk.Entry(main_frame, textvariable=file_color_var).pack(fill="x", pady=(0, 10))
 
@@ -1759,7 +1893,7 @@ class Quantifile(tk.Tk):
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(side="left", fill="both", expand=False, padx=(0, 10))
 
-        categories = ["image", "video", "audio", "document", "archive", "executable", "code", "text"]
+        categories = ["image", "video", "audio", "document", "archive", "executable", "code", "text", "other"]
         listbox = tk.Listbox(list_frame, height=8, exportselection=False)
         listbox.pack(side="left", fill="both", expand=True)
         scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=listbox.yview)

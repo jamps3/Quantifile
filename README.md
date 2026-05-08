@@ -6,6 +6,7 @@ A disk space visualization tool inspired by the classic SpaceMonger application.
 
 - **Interactive Treemap Visualization**: Visualize directory contents as nested rectangles, where area represents file/folder size
 - **Color-Coded Hierarchy**: Directories and files are color-coded by depth in the hierarchy, with customizable colors
+- **Context Color Editing**: Right-click a folder or file to change its folder or file-type color
 - **Navigation**:
   - Double-click folders to zoom in
   - Click "Zoom Out" button or press <kbd>Backspace</kbd> to navigate up
@@ -64,8 +65,10 @@ python main.py
 | **Settings** | Click "Settings" button |
 | **About** | Click "About" button |
 | **Select item** | Click on a rectangle |
-| **Right-click on item** | Opens context menu (Open file, Show in Explorer, Go Up) |
 | **Hover for info** | Move mouse over rectangles |
+| **Right-click on item** | Opens context menu (Open file, Color, Properties*, Show in Explorer, Go Up) |
+
+* Properties currently shows a placeholder dialog and can be expanded later with platform-specific support.
 
 ### How It Works
 
@@ -80,7 +83,7 @@ python main.py
    - Double-clicking a directory zooms into it
    - Enter key zooms into folders or opens files
    - Arrow keys navigate spatially through adjacent items
-   - Right-click shows context menu with zoom out option
+   - Right-click selects the item and shows a context menu with open, color, properties, file manager, and zoom out options
    - Quick zoom toggle enables instant right-click zoom out
    - Free space toggle adds available drive space visualization
    - Backspace navigates to the parent directory
@@ -129,7 +132,8 @@ Tkinter-based GUI with:
 - `delete_selected()` — Deletes the selected item with confirmation
 - `on_arrow()` — Handles arrow key navigation
 - `on_enter()` — Handles Enter key actions
-- `on_right_click()` — Shows context menu
+- `on_right_click()` — Selects the item under the pointer and shows context menu
+- `show_selected_color_dialog()` — Changes folder or file-type colors from the context menu
 - `truncate_text()` — Truncates text to fit window width
 - `export_svg()` — Exports treemap as SVG
 - `show_settings()` — Color and behavior settings dialog
@@ -145,7 +149,7 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 - The UI gracefully handles zero-size or empty directories
 
 ### Performance Considerations
-- Multi-threaded scanning uses parallel processing for subdirectories
+- Multi-threaded scanning uses one shared worker pool capped by the Maximum scan threads setting
 - Nodes with `size == 0` are filtered out during treemap computation
 - Minimum rectangle sizes (3×3 pixels) prevent excessive recursion
 - Labels only render when there's sufficient space (>70×25 pixels)
