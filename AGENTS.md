@@ -3,25 +3,29 @@
 ## Project Overview
 This project is a Python-based disk space visualization tool inspired by SpaceMonger. It uses a treemap layout to represent directory contents interactively.
 
-**Main File:** `main.py` (310 lines → 464 lines, single-file application)
+**Launcher:** `main.py`
+**Main Application Shell:** `app.py`
 
 ## Architecture Summary
 
 ### Core Components
-1. **Node Class** (`main.py:10-16`) — Tree node for filesystem representation
-2. **human_size()** (`main.py:19-28`) — Human-readable byte formatting
-3. **scan_path()** (`main.py:31-57`) — Recursive directory scanner
-4. **treemap()** (`main.py:60-82`) — Slice-and-dice treemap layout algorithm
-5. **SpaceMongerClone** (`main.py:85-306`) — Tkinter GUI application
+1. **Node Class** (`models.py`) — Tree node for filesystem representation
+2. **human_size()** (`models.py`) — Human-readable byte formatting
+3. **scan_path()** (`scanner.py`) — Recursive directory scanner
+4. **treemap()** (`layout.py`) — Treemap layout algorithm
+5. **Quantifile** (`app.py`) — Tkinter GUI application shell
+6. **Controller Mixins** (`scan_controller.py`, `render_controller.py`, `settings_controller.py`, `actions_controller.py`) — Feature-specific GUI behavior
 
 ## Development Workflow
 
 ### For Code Analysis
 When analyzing this codebase:
-- Start with `main.py` — it's the only source file
-- Focus on the `SpaceMongerClone` class for GUI logic
-- Understand the treemap algorithm for visualization
-- Note the threading pattern for background scanning
+- Start with `app.py` for top-level GUI composition
+- Use `scan_controller.py` for scan threading and progress logic
+- Use `render_controller.py` for treemap rendering, search, and navigation
+- Use `settings_controller.py` for settings, themes, fonts, and geometry
+- Use `actions_controller.py` for context menu, file actions, dialogs, colors, free space, and export
+- Use `layout.py` for treemap layout and `models.py` for shared data helpers
 
 ### For Code Changes
 1. **Always read the full file first** using the `read` tool
@@ -56,10 +60,10 @@ python main.py
 
 ### Project-Specific Patterns
 
-#### Editing main.py
+#### Editing Application Modules
 Always preserve:
 - The exact indentation (the file uses 4 spaces)
-- Tkinter main loop at the end (lines 308-310)
+- Tkinter launcher in `main.py`
 - Threading pattern for background work
 - Error handling approach (graceful degradation)
 
@@ -104,11 +108,11 @@ Common interesting patterns to grep:
 ## Notes for AI Agents
 
 ### Key Behaviors
-- **Single-file project**: All logic is in `main.py`
+- **Modular project**: `main.py` launches the app; behavior is split across focused modules
 - **No external dependencies**: Uses only Python stdlib
 - **GUI application**: Requires manual testing
 - **Threading present**: Background scanning pattern
-- **Recursive algorithms**: scan_path and treemap
+- **Recursive algorithms**: `scanner.scan_path()` and `layout.treemap()`
 
 ### Important Constraints
 - Do not add comments unless explicitly requested
@@ -159,7 +163,7 @@ If the application has issues:
 - Code updates should focus on features, not infrastructure
 
 ### Version Control
-- Git-friendly (text-based, single file)
+- Git-friendly text files with focused modules
 - Small diffs for most changes
 - Easy to review and merge
 

@@ -19,8 +19,11 @@ A disk space visualization tool inspired by the classic SpaceMonger application.
   - Delete files/folders with confirmation
 - **Free Space Visualization**: Toggle to show available drive space as a visual block
 - **Export**: Export current treemap as SVG with proper fonts and positioning
-- **Settings Persistence**: Remembers window position, fullscreen state, and color preferences
+- **Settings Persistence**: Remembers window position, fullscreen state, colors, fonts, and scan behavior
 - **Color Customization**: Customize colors for directories, files, selection, outlines, and labels with immediate application
+- **Font Customization**: Configure UI font size, heading size, and treemap label font sizing
+- **Log Tab**: Scan warnings, permission errors, and operation results are recorded without disruptive popups
+- **Access-Denied Placeholders**: Inaccessible folders stay visible with a metadata-size or tiny placeholder block
 - **Dynamic UI**: Status text truncates based on window width, dialogs center properly
 - **Rescan**: Re-scan directories to reflect changes
 - **Cross-Platform**: Works on Windows, macOS, and Linux
@@ -62,6 +65,7 @@ python main.py
 | **Open selected item** | Click "Open Selected" button |
 | **Delete selected item** | Click "Delete Selected" button |
 | **Export SVG** | Click "Export SVG" button |
+| **View log messages** | Open the "Log" tab |
 | **Settings** | Click "Settings" button |
 | **About** | Click "About" button |
 | **Select item** | Click on a rectangle |
@@ -86,12 +90,45 @@ python main.py
    - Right-click selects the item and shows a context menu with open, color, properties, file manager, and zoom out options
    - Quick zoom toggle enables instant right-click zoom out
    - Free space toggle adds available drive space visualization
+   - Scan warnings and operation results appear in the Log tab
+   - Inaccessible folders are logged, counted in the scan summary, and shown as access-denied placeholders
    - Backspace navigates to the parent directory
    - Hovering shows the cursor as a hand and displays path/size info
 
 ## Architecture
 
 ### Core Components
+
+#### `main.py`
+Small launcher that creates `Quantifile` and starts the Tkinter event loop.
+
+#### `app.py`
+Tkinter shell for top-level UI construction, logging, shared state, and mixin composition.
+
+#### `models.py`
+Shared data and formatting helpers:
+- `Node` — file/directory tree node
+- `human_size()` — formats byte counts like "1.5 MB"
+
+#### `scanner.py`
+Standalone recursive scanner helper used for simple non-GUI scans.
+
+#### `layout.py`
+Treemap layout algorithm for converting nodes into rectangles.
+
+#### `scan_controller.py`
+Background scan workflows, quick browse, shared worker pool, progress, access-denied placeholders, and scan completion.
+
+#### `render_controller.py`
+Treemap drawing, search highlighting, keyboard navigation, zoom animation, and mouse interactions.
+
+#### `settings_controller.py`
+Settings persistence, theme/font application, window geometry, and the tabbed Settings dialog.
+
+#### `actions_controller.py`
+Dialogs and user actions, including file operations, context menu, color settings, free-space display, SVG export, and About.
+
+### Data Model
 
 #### `Node` Class
 Represents a file or directory in the tree:
@@ -101,22 +138,14 @@ Represents a file or directory in the tree:
 - `size` — Size in bytes
 - `children` — List of child nodes (for directories)
 
-#### `human_size()`
-Formats a byte count into a human-readable string (e.g., "1.5 MB").
-
-#### `scan_path()`
-Recursively scans a path and returns a `Node` tree. Handles permission errors gracefully.
-
-#### `treemap()`
-Computes treemap rectangles for a list of nodes within the given bounds using the slice-and-dice algorithm.
-
 #### `Quantifile` Class (Main Application)
 Tkinter-based GUI with:
 - Toolbar with action buttons including toggles
 - Search bar with name/size filtering
 - Status bar with dynamic text truncation
+- Tabbed treemap and log views
 - Canvas for treemap rendering
-- Settings persistence (window position, fullscreen, colors)
+- Settings persistence (window position, fullscreen, colors, fonts)
 - Event handlers for mouse, keyboard, and context menu input
 
 ### Key Methods
@@ -136,7 +165,8 @@ Tkinter-based GUI with:
 - `show_selected_color_dialog()` — Changes folder or file-type colors from the context menu
 - `truncate_text()` — Truncates text to fit window width
 - `export_svg()` — Exports treemap as SVG
-- `show_settings()` — Color and behavior settings dialog
+- `show_settings()` — Tabbed appearance, font, behavior, and scan settings dialog
+- `log_message()` — Records non-blocking information, warnings, and errors in the Log tab
 
 ## Implementation Details
 
@@ -144,8 +174,9 @@ Tkinter-based GUI with:
 Scanning is performed in a background thread to keep the UI responsive. The `after()` method is used to safely update the UI from the worker thread.
 
 ### Error Handling
-- `PermissionError` and `OSError` during scanning return empty/size-zero nodes
-- File operations (open/delete) catch all exceptions and show error dialogs
+- `PermissionError` during scanning creates a visible access-denied placeholder and writes to the Log tab
+- Other `OSError` cases during scanning return empty/size-zero nodes and write to the Log tab
+- File operations (open/delete) catch exceptions and write failures to the Log tab
 - The UI gracefully handles zero-size or empty directories
 
 ### Performance Considerations

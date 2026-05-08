@@ -11,7 +11,11 @@
 - Persistent settings (fullscreen, window position, colors)
 - Color customization with immediate application
 - Context menu color editing for folder and file-type colors
+- Organized tabbed Settings dialog with configurable UI and treemap label fonts
+- Log tab for scan warnings, permission errors, and non-blocking operation messages
+- Access-denied folder placeholders with scan summary logging
 - Shared scan worker pool capped by Maximum scan threads
+- Split main.py into launcher, model, layout, scanner, app shell, and controller mixin modules
 - Dynamic text truncation based on window width
 - Cross-platform file operations and properties
 - Enhanced About dialog with license and support link
@@ -30,6 +34,4 @@
 - Export to additional formats (PNG, PDF)
 - Network drive scanning support
 - File type statistics and charts
-- Move scan error dialogs onto the Tk main thread using self.after(...)
-- Split main.py into scanner, treemap, settings, and UI modules
 - Add small tests for human_size, treemap, and temp-folder scanning
