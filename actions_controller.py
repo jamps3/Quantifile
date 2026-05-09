@@ -23,13 +23,14 @@ class ActionsMixin:
     def show_about(self):
         about_win = tk.Toplevel(self)
         about_win.title("About Quantifile")
-        width = 500
-        height = 550  # Increased height for more text
-        x = (self.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.winfo_screenheight() // 2) - (height // 2)
-        about_win.geometry(f"{width}x{height}+{x}+{y}")
+        about_win.geometry("400x300")
+        about_win.resizable(False, False)
         about_win.transient(self)
         about_win.grab_set()
+
+        # Apply dark theme to dialog if in dark mode
+        if self.dark_mode:
+            about_win.configure(bg="#0f0f0f")
         about_win.resizable(False, False)
 
         main_frame = ttk.Frame(about_win, padding=20)
@@ -316,6 +317,10 @@ class ActionsMixin:
         color_win.geometry(f"{width}x{height}+{x}+{y}")
         color_win.transient(self)
         color_win.grab_set()
+
+        # Apply dark theme to dialog if in dark mode
+        if self.dark_mode:
+            color_win.configure(bg="#0f0f0f")
         color_win.resizable(False, False)
 
         main_frame = ttk.Frame(color_win, padding=20)
@@ -576,6 +581,10 @@ class ActionsMixin:
         colors_win.transient(self)
         colors_win.grab_set()
 
+        # Apply dark theme to dialog if in dark mode
+        if self.dark_mode:
+            colors_win.configure(bg="#0f0f0f")
+
         main_frame = ttk.Frame(colors_win, padding=20)
         main_frame.pack(fill="both", expand=True)
 
@@ -628,12 +637,16 @@ class ActionsMixin:
         """Dialog for configuring file type category colors."""
         ft_win = tk.Toplevel(self)
         ft_win.title("File Type Colors")
-        width, height = 450, 400
+        width, height = 450, 600
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         ft_win.geometry(f"{width}x{height}+{x}+{y}")
         ft_win.transient(self)
         ft_win.grab_set()
+
+        # Apply dark theme to dialog if in dark mode
+        if self.dark_mode:
+            ft_win.configure(bg="#0f0f0f")
         ft_win.resizable(False, False)
 
         main_frame = ttk.Frame(ft_win, padding=20)
@@ -725,6 +738,10 @@ class ActionsMixin:
         log_win.transient(self)
         log_win.grab_set()
 
+        # Apply dark theme to dialog if in dark mode
+        if self.dark_mode:
+            log_win.configure(bg="#0f0f0f")
+
         main_frame = ttk.Frame(log_win, padding=20)
         main_frame.pack(fill="both", expand=True)
 
@@ -757,6 +774,10 @@ class ActionsMixin:
         search_win.resizable(True, True)
         search_win.transient(self)
         search_win.grab_set()
+
+        # Apply dark theme to dialog if in dark mode
+        if self.dark_mode:
+            search_win.configure(bg="#0f0f0f")
 
         # Create main frame
         main_frame = ttk.Frame(search_win, padding="10")

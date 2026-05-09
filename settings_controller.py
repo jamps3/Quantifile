@@ -116,20 +116,32 @@ class SettingsMixin:
         )
 
         if self.dark_mode:
-            # Dark theme
-            self.configure(bg="#1e1e1e")
-            base_bg = "#1e1e1e"
-            default_canvas_bg = "#2d2d30"
+            # Dark theme - deeper, more consistent colors
+            self.configure(bg="#0f0f0f")
+            base_bg = "#0f0f0f"
+            default_canvas_bg = "#1a1a1a"
             self.style = ttk.Style()
             self.style.configure(".", font=ui_font)
-            self.style.configure("TFrame", background="#1e1e1e")
-            self.style.configure("TNotebook", background="#1e1e1e", borderwidth=0)
-            self.style.configure("TNotebook.Tab", background="#2d2d30", foreground="#cccccc", font=ui_font)
-            self.style.map("TNotebook.Tab", background=[("selected", "#3c3c3c")])
-            self.style.configure("TButton", background="#3c3c3c", foreground="#cccccc", font=ui_font)
-            self.style.map("TButton", background=[("active", "#4a4a4a")])
-            self.style.configure("TLabel", background="#1e1e1e", foreground="#cccccc", font=ui_font)
-            self.style.configure("Heading.TLabel", background="#1e1e1e", foreground="#cccccc", font=heading_font)
+            self.style.configure("TFrame", background="#0f0f0f")
+            self.style.configure("TNotebook", background="#0f0f0f", borderwidth=0)
+            self.style.configure("TNotebook.Tab", background="#1a1a1a", foreground="#cccccc", font=ui_font, borderwidth=1, relief="flat")
+            self.style.map("TNotebook.Tab",
+                          background=[("selected", "#2a2a2a"), ("active", "#222222")],
+                          foreground=[("selected", "#ffffff"), ("active", "#ffffff")])
+            self.style.configure("TButton", background="#2a2a2a", foreground="#cccccc", font=ui_font, borderwidth=1, relief="flat")
+            self.style.map("TButton",
+                          background=[("active", "#3a3a3a"), ("pressed", "#1a1a1a")],
+                          foreground=[("active", "#ffffff"), ("pressed", "#cccccc")])
+            self.style.configure("TLabel", background="#0f0f0f", foreground="#cccccc", font=ui_font)
+            self.style.configure("Heading.TLabel", background="#0f0f0f", foreground="#cccccc", font=heading_font)
+            # Additional dark theme elements
+            self.style.configure("TEntry", fieldbackground="#2a2a2a", foreground="#cccccc", insertcolor="#cccccc")
+            self.style.configure("TCombobox", fieldbackground="#2a2a2a", foreground="#cccccc")
+            self.style.configure("TCheckbutton", background="#0f0f0f", foreground="#cccccc")
+            self.style.configure("TRadiobutton", background="#0f0f0f", foreground="#cccccc")
+            self.style.configure("TFrame", background="#0f0f0f")
+            self.style.configure("TLabelFrame", background="#0f0f0f", foreground="#cccccc")
+            self.style.configure("TLabelFrame.Label", background="#0f0f0f", foreground="#cccccc", font=heading_font)
         else:
             # Light theme
             self.configure(bg="#f0f0f0")
@@ -210,6 +222,10 @@ class SettingsMixin:
         settings_win.transient(self)
         settings_win.grab_set()
         settings_win.resizable(False, False)
+
+        # Apply dark theme to dialog if in dark mode
+        if self.dark_mode:
+            settings_win.configure(bg="#0f0f0f")
 
         main_frame = ttk.Frame(settings_win, padding=12)
         main_frame.pack(fill="both", expand=True)
