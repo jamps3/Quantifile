@@ -112,6 +112,7 @@ class RenderMixin:
     def draw(self):
         self.canvas.delete("all")
         self.rect_nodes.clear()
+        self.node_rects.clear()
 
         if not self.current_node:
             return
@@ -157,6 +158,7 @@ class RenderMixin:
         )
 
         self.rect_nodes[rect] = node
+        self.node_rects[rect] = node
 
         if recency:
             self.draw_modified_indicator(node, x, y, w, h, recency)
@@ -355,6 +357,7 @@ class RenderMixin:
             scale = i / steps
             self.canvas.delete("all")
             self.rect_nodes.clear()
+            self.node_rects.clear()
             
             # Draw shrinking old rectangles
             for (x1, y1, x2, y2, fill, outline, width_val) in old_items:
@@ -409,6 +412,7 @@ class RenderMixin:
 
             self.canvas.delete("all")
             self.rect_nodes.clear()
+            self.node_rects.clear()
             rect = self.canvas.create_rectangle(
                 x1, y1, x2, y2,
                 fill=color,
@@ -416,6 +420,7 @@ class RenderMixin:
                 width=3
             )
             self.rect_nodes[rect] = node
+            self.node_rects[rect] = node
             self.after(max(1, int(duration / steps)), lambda: draw_step(step + 1))
 
         draw_step()
@@ -451,12 +456,11 @@ class RenderMixin:
         if not self.selected_node:
             return
 
-        # Find current rect
-        current_rect = None
-        for r, n in self.rect_nodes.items():
-            if n == self.selected_node:
-                current_rect = r
-                break
+        direction = event.keysym
+        if direction not in ("Left", "Right", "Up", "Down"):
+            return
+
+        current_rect = self._main_rect_for_node(self.selected_node)
         if not current_rect:
             return
 
@@ -464,40 +468,96 @@ class RenderMixin:
         if not current_bbox:
             return
 
-        cx = (current_bbox[0] + current_bbox[2]) / 2
-        cy = (current_bbox[1] + current_bbox[3]) / 2
-        current_width = current_bbox[2] - current_bbox[0]
-        current_height = current_bbox[3] - current_bbox[1]
-
         candidates = []
-        for r, n in self.rect_nodes.items():
+        selected_path = getattr(self.selected_node, "path", None)
+        for r, n in self.node_rects.items():
             if r == current_rect:
+                continue
+            if n == self.selected_node or getattr(n, "path", None) == selected_path:
                 continue
             bbox = self.canvas.bbox(r)
             if not bbox:
                 continue
-            rx = (bbox[0] + bbox[2]) / 2
-            ry = (bbox[1] + bbox[3]) / 2
-            if event.keysym == "Right" and rx > cx and abs(ry - cy) < current_height / 2:
-                candidates.append((r, rx, ry))
-            elif event.keysym == "Left" and rx < cx and abs(ry - cy) < current_height / 2:
-                candidates.append((r, rx, ry))
-            elif event.keysym == "Down" and ry > cy and abs(rx - cx) < current_width / 2:
-                candidates.append((r, ry, rx))
-            elif event.keysym == "Up" and ry < cy and abs(rx - cx) < current_width / 2:
-                candidates.append((r, ry, rx))
+            if self._bbox_contains(bbox, current_bbox):
+                continue
+            score = self._arrow_candidate_score(direction, current_bbox, bbox)
+            if score is not None:
+                inside_current = self._bbox_contains(current_bbox, bbox)
+                candidates.append(((inside_current,) + score, n))
 
         if not candidates:
             return
 
-        # Find closest in the band
-        if event.keysym in ("Left", "Right"):
-            closest = min(candidates, key=lambda c: abs(c[1] - cx))  # Closest in x
-        else:
-            closest = min(candidates, key=lambda c: abs(c[1] - cy))  # Closest in y
-
-        self.selected_node = self.rect_nodes[closest[0]]
+        self.selected_node = min(candidates, key=lambda c: c[0])[1]
+        self._update_status(self.selected_node)
         self.draw()
+
+    def _main_rect_for_node(self, node):
+        node_path = getattr(node, "path", None)
+        for rect, rect_node in self.node_rects.items():
+            rect_path = getattr(rect_node, "path", None)
+            if rect_node == node or rect_path == node_path:
+                return rect
+        return None
+
+    def _arrow_candidate_score(self, direction, current_bbox, bbox):
+        x1, y1, x2, y2 = current_bbox
+        bx1, by1, bx2, by2 = bbox
+        cx = (x1 + x2) / 2
+        cy = (y1 + y2) / 2
+        bx = (bx1 + bx2) / 2
+        by = (by1 + by2) / 2
+
+        if direction == "Right":
+            if bx <= cx:
+                return None
+            primary = bx1 - x2 if bx1 >= x2 else bx - cx
+            gap = self._interval_gap(y1, y2, by1, by2)
+            cross = abs(by - cy)
+        elif direction == "Left":
+            if bx >= cx:
+                return None
+            primary = x1 - bx2 if bx2 <= x1 else cx - bx
+            gap = self._interval_gap(y1, y2, by1, by2)
+            cross = abs(by - cy)
+        elif direction == "Down":
+            if by <= cy:
+                return None
+            primary = by1 - y2 if by1 >= y2 else by - cy
+            gap = self._interval_gap(x1, x2, bx1, bx2)
+            cross = abs(bx - cx)
+        elif direction == "Up":
+            if by >= cy:
+                return None
+            primary = y1 - by2 if by2 <= y1 else cy - by
+            gap = self._interval_gap(x1, x2, bx1, bx2)
+            cross = abs(bx - cx)
+        else:
+            return None
+
+        if primary <= 0:
+            return None
+
+        return (gap > 0, gap, primary, cross)
+
+    def _interval_gap(self, start, end, other_start, other_end):
+        if end < other_start:
+            return other_start - end
+        if other_end < start:
+            return start - other_end
+        return 0
+
+    def _bbox_contains(self, outer, inner):
+        return (
+            outer[0] <= inner[0]
+            and outer[1] <= inner[1]
+            and outer[2] >= inner[2]
+            and outer[3] >= inner[3]
+            and (
+                outer[2] - outer[0] > inner[2] - inner[0]
+                or outer[3] - outer[1] > inner[3] - inner[1]
+            )
+        )
 
     def on_double_click(self, event):
         node = self.node_at_event(event) or self.selected_node

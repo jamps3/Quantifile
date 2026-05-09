@@ -21,6 +21,7 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.root_node = None
         self.current_node = None
         self.rect_nodes = {}
+        self.node_rects = {}
         self.dark_mode = False
 
         # Bookmarks: dict of path -> scanned root node
