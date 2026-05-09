@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import time
 import tkinter as tk
 from tkinter import colorchooser, filedialog, messagebox, ttk
 
@@ -748,25 +749,330 @@ class ActionsMixin:
         ttk.Button(button_frame, text="Save", command=save_log_colors).pack(side="right", padx=(5, 0))
         ttk.Button(button_frame, text="Cancel", command=log_win.destroy).pack(side="right")
 
-    def toggle_bookmarks_panel(self):
-        """Toggle the bookmarks side panel visibility."""
-        if self.bookmarks_visible:
-            # Hide the panel
-            self.main_paned.remove(self.bookmarks_panel)
-            self.bookmarks_visible = False
-            self.bookmarks_toggle_button.config(text="Bookmarks (HIDDEN)")
-        else:
-            # Show the panel
-            self.main_paned.insert(0, self.bookmarks_panel)
-            self.main_paned.sashpos(0, 200)  # Set initial width
-            self.bookmarks_visible = True
-            self.bookmarks_toggle_button.config(text="Bookmarks (SHOWN)")
-            # Refresh the panel listbox
-            self.update_bookmarks_panel_list()
+    def show_advanced_search(self):
+        """Show the advanced search dialog."""
+        search_win = tk.Toplevel(self)
+        search_win.title("Advanced Search")
+        search_win.geometry("500x600")
+        search_win.resizable(True, True)
+        search_win.transient(self)
+        search_win.grab_set()
 
-    def show_bookmarks_tab(self):
-        """Switch to the bookmarks tab."""
-        self.main_notebook.select(self.bookmarks_tab)
+        # Create main frame
+        main_frame = ttk.Frame(search_win, padding="10")
+        main_frame.pack(fill="both", expand=True)
+
+        # Title
+        ttk.Label(main_frame, text="Advanced Search & Filtering", font=("", 12, "bold")).pack(pady=(0, 10))
+
+        # Create notebook for different filter categories
+        notebook = ttk.Notebook(main_frame)
+        notebook.pack(fill="both", expand=True, pady=(0, 10))
+
+        # Basic Filters Tab
+        basic_frame = ttk.Frame(notebook)
+        notebook.add(basic_frame, text="Basic")
+
+        # Name/Regex search
+        name_frame = ttk.LabelFrame(basic_frame, text="Name Search", padding="5")
+        name_frame.pack(fill="x", pady=(0, 5))
+
+        ttk.Label(name_frame, text="Search text:").grid(row=0, column=0, sticky="w", pady=2)
+        name_entry = ttk.Entry(name_frame, width=30)
+        name_entry.grid(row=0, column=1, sticky="ew", pady=2, padx=(5, 0))
+
+        name_case_var = tk.BooleanVar()
+        ttk.Checkbutton(name_frame, text="Case sensitive", variable=name_case_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=2)
+
+        regex_var = tk.BooleanVar()
+        ttk.Checkbutton(name_frame, text="Regular expression", variable=regex_var).grid(row=2, column=0, columnspan=2, sticky="w", pady=2)
+
+        # File type filter
+        type_frame = ttk.LabelFrame(basic_frame, text="File Type", padding="5")
+        type_frame.pack(fill="x", pady=(0, 5))
+
+        ttk.Label(type_frame, text="Extensions (comma-separated):").grid(row=0, column=0, sticky="w", pady=2)
+        type_entry = ttk.Entry(type_frame, width=30)
+        type_entry.grid(row=0, column=1, sticky="ew", pady=2, padx=(5, 0))
+        ttk.Label(type_frame, text="e.g., .txt,.pdf,.docx").grid(row=1, column=0, columnspan=2, sticky="w", pady=2, padx=(15, 0))
+
+        type_exclude_var = tk.BooleanVar()
+        ttk.Checkbutton(type_frame, text="Exclude these types", variable=type_exclude_var).grid(row=2, column=0, columnspan=2, sticky="w", pady=2)
+
+        # Size Filters Tab
+        size_frame = ttk.Frame(notebook)
+        notebook.add(size_frame, text="Size")
+
+        size_filter_frame = ttk.LabelFrame(size_frame, text="Size Range", padding="5")
+        size_filter_frame.pack(fill="x", pady=(0, 5))
+
+        ttk.Label(size_filter_frame, text="Minimum size:").grid(row=0, column=0, sticky="w", pady=2)
+        min_size_entry = ttk.Entry(size_filter_frame, width=15)
+        min_size_entry.grid(row=0, column=1, sticky="w", pady=2, padx=(5, 0))
+        ttk.Label(size_filter_frame, text="(e.g., 1MB, 500KB, 100)").grid(row=0, column=2, sticky="w", pady=2, padx=(5, 0))
+
+        ttk.Label(size_filter_frame, text="Maximum size:").grid(row=1, column=0, sticky="w", pady=2)
+        max_size_entry = ttk.Entry(size_filter_frame, width=15)
+        max_size_entry.grid(row=1, column=1, sticky="w", pady=2, padx=(5, 0))
+
+        # Date Filters Tab
+        date_frame = ttk.Frame(notebook)
+        notebook.add(date_frame, text="Date")
+
+        date_filter_frame = ttk.LabelFrame(date_frame, text="Modified Date", padding="5")
+        date_filter_frame.pack(fill="x", pady=(0, 5))
+
+        ttk.Label(date_filter_frame, text="Modified within last:").grid(row=0, column=0, sticky="w", pady=2)
+        date_days_entry = ttk.Entry(date_filter_frame, width=10)
+        date_days_entry.grid(row=0, column=1, sticky="w", pady=2, padx=(5, 0))
+        ttk.Label(date_filter_frame, text="days").grid(row=0, column=2, sticky="w", pady=2, padx=(5, 0))
+
+        # Type Filters Tab
+        type_filter_frame = ttk.Frame(notebook)
+        notebook.add(type_filter_frame, text="Type")
+
+        category_frame = ttk.LabelFrame(type_filter_frame, text="Item Type", padding="5")
+        category_frame.pack(fill="x", pady=(0, 5))
+
+        file_only_var = tk.BooleanVar()
+        dir_only_var = tk.BooleanVar()
+
+        ttk.Checkbutton(category_frame, text="Files only", variable=file_only_var).pack(anchor="w", pady=2)
+        ttk.Checkbutton(category_frame, text="Directories only", variable=dir_only_var).pack(anchor="w", pady=2)
+
+        # Logic Tab
+        logic_frame = ttk.Frame(notebook)
+        notebook.add(logic_frame, text="Logic")
+
+        logic_filter_frame = ttk.LabelFrame(logic_frame, text="Combination Logic", padding="5")
+        logic_filter_frame.pack(fill="x", pady=(0, 5))
+
+        logic_var = tk.StringVar(value="AND")
+        ttk.Radiobutton(logic_filter_frame, text="AND (all conditions must match)", variable=logic_var, value="AND").pack(anchor="w", pady=2)
+        ttk.Radiobutton(logic_filter_frame, text="OR (any condition can match)", variable=logic_var, value="OR").pack(anchor="w", pady=2)
+
+        # Results preview
+        results_frame = ttk.LabelFrame(main_frame, text="Search Results", padding="5")
+        results_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        results_text = tk.Text(results_frame, height=6, wrap="word", state="disabled")
+        results_scrollbar = ttk.Scrollbar(results_frame, orient="vertical", command=results_text.yview)
+        results_text.configure(yscrollcommand=results_scrollbar.set)
+
+        results_text.pack(side="left", fill="both", expand=True)
+        results_scrollbar.pack(side="right", fill="y")
+
+        def update_preview():
+            """Update the search results preview."""
+            if not self.current_node:
+                results_text.configure(state="normal")
+                results_text.delete("1.0", tk.END)
+                results_text.insert("1.0", "No directory scanned yet.")
+                results_text.configure(state="disabled")
+                return
+
+            # Collect filter criteria
+            filters = {
+                'name': name_entry.get().strip(),
+                'case_sensitive': name_case_var.get(),
+                'regex': regex_var.get(),
+                'extensions': [ext.strip().lstrip('.') for ext in type_entry.get().split(',') if ext.strip()],
+                'exclude_types': type_exclude_var.get(),
+                'min_size': min_size_entry.get().strip(),
+                'max_size': max_size_entry.get().strip(),
+                'days': date_days_entry.get().strip(),
+                'files_only': file_only_var.get(),
+                'dirs_only': dir_only_var.get(),
+                'logic': logic_var.get()
+            }
+
+            # Apply filters and count matches
+            matches = self._apply_advanced_filters(self.current_node, filters)
+
+            results_text.configure(state="normal")
+            results_text.delete("1.0", tk.END)
+            results_text.insert("1.0", f"Found {len(matches)} matching items\n\n")
+            if matches:
+                for i, path in enumerate(list(matches)[:10]):  # Show first 10
+                    name = os.path.basename(path) or path
+                    results_text.insert(tk.END, f"• {name}\n")
+                if len(matches) > 10:
+                    results_text.insert(tk.END, f"... and {len(matches) - 10} more")
+            results_text.configure(state="disabled")
+
+        # Bind updates to entry changes
+        for entry in [name_entry, type_entry, min_size_entry, max_size_entry, date_days_entry]:
+            entry.bind("<KeyRelease>", lambda e: search_win.after(300, update_preview))
+
+        for var in [name_case_var, regex_var, type_exclude_var, file_only_var, dir_only_var, logic_var]:
+            var.trace_add("write", lambda *args: search_win.after(300, update_preview))
+
+        # Initial preview
+        update_preview()
+
+        # Buttons
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill="x", pady=(10, 0))
+
+        def apply_search():
+            """Apply the advanced search filters."""
+            if not self.current_node:
+                messagebox.showerror("No Data", "Please scan a directory first.")
+                return
+
+            filters = {
+                'name': name_entry.get().strip(),
+                'case_sensitive': name_case_var.get(),
+                'regex': regex_var.get(),
+                'extensions': [ext.strip().lstrip('.') for ext in type_entry.get().split(',') if ext.strip()],
+                'exclude_types': type_exclude_var.get(),
+                'min_size': min_size_entry.get().strip(),
+                'max_size': max_size_entry.get().strip(),
+                'days': date_days_entry.get().strip(),
+                'files_only': file_only_var.get(),
+                'dirs_only': dir_only_var.get(),
+                'logic': logic_var.get()
+            }
+
+            matches = self._apply_advanced_filters(self.current_node, filters)
+            self.search_matches.clear()
+            self.search_matches.update(matches)
+            self.search_active = bool(matches)
+
+            if matches:
+                self.status.config(text=f"Advanced search: {len(matches)} matches")
+            else:
+                self.status.config(text="Advanced search: No matches found")
+
+            self.draw()
+            search_win.destroy()
+
+        def clear_filters():
+            """Clear all filter fields."""
+            name_entry.delete(0, tk.END)
+            type_entry.delete(0, tk.END)
+            min_size_entry.delete(0, tk.END)
+            max_size_entry.delete(0, tk.END)
+            date_days_entry.delete(0, tk.END)
+            name_case_var.set(False)
+            regex_var.set(False)
+            type_exclude_var.set(False)
+            file_only_var.set(False)
+            dir_only_var.set(False)
+            logic_var.set("AND")
+            update_preview()
+
+        ttk.Button(button_frame, text="Apply Search", command=apply_search).pack(side="right", padx=(5, 0))
+        ttk.Button(button_frame, text="Clear All", command=clear_filters).pack(side="right", padx=(5, 0))
+        ttk.Button(button_frame, text="Cancel", command=search_win.destroy).pack(side="right")
+
+    def _apply_advanced_filters(self, node, filters):
+        """Apply advanced filters to the tree and return matching paths."""
+        matches = set()
+
+        def check_node(node):
+            """Check if a node matches all the filters."""
+            if not node:
+                return False
+
+            # Name/regex filter
+            name_match = True
+            if filters['name']:
+                if filters['regex']:
+                    try:
+                        import re
+                        pattern = filters['name']
+                        if not filters['case_sensitive']:
+                            pattern = "(?i)" + pattern
+                        name_match = bool(re.search(pattern, node.name))
+                    except re.error:
+                        name_match = False  # Invalid regex
+                else:
+                    haystack = node.name if filters['case_sensitive'] else node.name.lower()
+                    needle = filters['name'] if filters['case_sensitive'] else filters['name'].lower()
+                    name_match = needle in haystack
+
+            # Extension filter
+            ext_match = True
+            if filters['extensions']:
+                if node.is_dir:
+                    ext_match = not filters['exclude_types']  # Directories match if not excluding
+                else:
+                    node_ext = os.path.splitext(node.name)[1].lstrip('.').lower()
+                    has_ext = node_ext in [ext.lower() for ext in filters['extensions']]
+                    ext_match = has_ext if not filters['exclude_types'] else not has_ext
+
+            # Size filters
+            size_match = True
+            if filters['min_size'] or filters['max_size']:
+                try:
+                    min_bytes = self.parse_size(filters['min_size']) if filters['min_size'] else 0
+                    max_bytes = self.parse_size(filters['max_size']) if filters['max_size'] else float('inf')
+                    size_match = min_bytes <= node.size <= max_bytes
+                except:
+                    size_match = True  # Invalid size specification
+
+            # Date filter
+            date_match = True
+            if filters['days']:
+                try:
+                    days = int(filters['days'])
+                    if hasattr(node, 'modified_time') and node.modified_time:
+                        age_days = (time.time() - node.modified_time) / 86400
+                        date_match = age_days <= days
+                    else:
+                        date_match = False
+                except:
+                    date_match = True
+
+            # Type filter
+            type_match = True
+            if filters['files_only'] and filters['dirs_only']:
+                type_match = False  # Can't be both
+            elif filters['files_only']:
+                type_match = not node.is_dir
+            elif filters['dirs_only']:
+                type_match = node.is_dir
+
+            # Combine with logic
+            if filters['logic'] == 'AND':
+                return name_match and ext_match and size_match and date_match and type_match
+            else:  # OR
+                return name_match or ext_match or size_match or date_match or type_match
+
+        def collect_matches(node):
+            """Recursively collect matching nodes."""
+            if check_node(node):
+                matches.add(node.path)
+
+            if node.children:
+                for child in node.children:
+                    collect_matches(child)
+
+        collect_matches(node)
+        return matches
+
+    def parse_size(self, size_str):
+        """Convert a size string like '1MB', '500KB', '2GB' to bytes."""
+        if not size_str:
+            return 0
+        size_str = size_str.strip().upper()
+        units = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
+
+        # Try format: number + unit (e.g., "5MB", "1GB")
+        for unit, multiplier in units.items():
+            if size_str.endswith(unit.upper()):
+                try:
+                    num = float(size_str[:-len(unit)])
+                    return int(num * multiplier)
+                except ValueError:
+                    continue
+
+        # Try plain number (assume bytes)
+        try:
+            return int(float(size_str))
+        except ValueError:
+            return 0
 
     def add_current_to_bookmarks(self):
         """Add the current directory to bookmarks."""
@@ -922,3 +1228,23 @@ class ActionsMixin:
         self.update_bookmarks_list()
         if self.bookmarks_visible:
             self.update_bookmarks_panel_list()
+
+    def toggle_bookmarks_panel(self):
+        """Toggle the bookmarks side panel visibility."""
+        if self.bookmarks_visible:
+            # Hide the panel
+            self.main_paned.remove(self.bookmarks_panel)
+            self.bookmarks_visible = False
+            self.bookmarks_toggle_button.config(text="Bookmarks (HIDDEN)")
+        else:
+            # Show the panel
+            self.main_paned.insert(0, self.bookmarks_panel)
+            self.main_paned.sashpos(0, 200)  # Set initial width
+            self.bookmarks_visible = True
+            self.bookmarks_toggle_button.config(text="Bookmarks (SHOWN)")
+            # Refresh the panel listbox
+            self.update_bookmarks_panel_list()
+
+    def show_bookmarks_tab(self):
+        """Switch to the bookmarks tab."""
+        self.main_notebook.select(self.bookmarks_tab)

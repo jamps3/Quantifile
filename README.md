@@ -22,6 +22,7 @@ A disk space visualization tool inspired by the classic SpaceMonger application.
 - **Free Space Visualization**: Toggle to show available drive space as a visual block
 - **Export**: Export current treemap as SVG with proper fonts and positioning
 - **Bookmarks**: Save favorite directories for instant access, with cached scan data for quick browsing and optional side panel view
+- **Advanced Search & Filtering**: Multi-criteria search with file types, size ranges, date filters, regex support, and AND/OR logic
 - **Settings Persistence**: Remembers window position, fullscreen state, colors, fonts, and scan behavior
 - **Color Customization**: Customize colors for directories, files, selection, outlines, and labels with immediate application
 - **Font Customization**: Configure UI font size, heading size, and treemap label font sizing
@@ -77,6 +78,7 @@ python main.py
 | **Select item** | Click on a rectangle |
 | **Hover for info** | Move mouse over rectangles |
 | **Right-click on item** | Opens context menu (Open file, Color, Properties*, Show in Explorer, Go Up, Add to Bookmarks) |
+| **Advanced search** | Click "Advanced" button next to search bar for multi-criteria filtering |
 
 * Properties currently shows a placeholder dialog and can be expanded later with platform-specific support.
 
@@ -89,15 +91,16 @@ python main.py
 3. **Rendering**: The treemap is drawn recursively on a Tkinter canvas. Each node is represented as a colored rectangle with a label (when space permits). Colors are customizable and vary by type and depth.
 
 4. **Interactivity**:
-   - Clicking selects a node and shows its path and size in the status bar
-   - Double-clicking a directory zooms into it
-   - Enter key zooms into folders or opens files
-   - Arrow keys navigate spatially through adjacent items
-   - Right-click selects the item and shows a context menu with open, color, properties, file manager, and zoom out options
-   - Quick zoom toggle enables instant right-click zoom out
-   - Free space toggle adds available drive space visualization
-   - Scan warnings and operation results appear in the Log tab
-   - Inaccessible folders are logged, counted in the scan summary, and shown as access-denied placeholders
+    - Clicking selects a node and shows its path and size in the status bar
+    - Double-clicking a directory zooms into it
+    - Enter key zooms into folders or opens files
+    - Arrow keys navigate spatially through adjacent items
+    - Right-click selects the item and shows a context menu with open, color, properties, file manager, and zoom out options
+    - Quick zoom toggle enables instant right-click zoom out
+    - Free space toggle adds available drive space visualization
+    - Advanced search with multi-criteria filtering (name, type, size, date, regex)
+    - Scan warnings and operation results appear in the Log tab
+    - Inaccessible folders are logged, counted in the scan summary, and shown as access-denied placeholders
     - Recently modified files are outlined/marked visually, with last-hour files emphasized
     - Bookmarks side panel can be toggled for simultaneous viewing of favorites
     - Backspace navigates to the parent directory
@@ -205,7 +208,6 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 ## Future Enhancements
 
 Potential improvements could include:
-- Advanced search and filtering options
 - Undo/redo for file operations
 - Multi-selection and batch operations
 

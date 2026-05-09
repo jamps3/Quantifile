@@ -59,6 +59,7 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.size_entry.bind("<KeyRelease>", lambda e: self.apply_search() if e.keysym in ("Return", "KP_Enter") else None)
 
         ttk.Button(search_frame, text="×", width=2, command=self.clear_search).pack(side="left", padx=2)
+        ttk.Button(search_frame, text="Advanced", command=self.show_advanced_search).pack(side="left", padx=(10, 2))
 
     def create_status_ui(self):
         # Status row
