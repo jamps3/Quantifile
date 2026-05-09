@@ -49,6 +49,15 @@ No installation required — the application uses only Python standard library m
 
 - Python 3.6 or higher
 
+### Standalone Executable
+
+A standalone Windows executable is available that doesn't require Python installation:
+
+- Download `Quantifile-v1.0-Windows.zip`
+- Extract the ZIP file
+- Run `Quantifile.exe` directly
+- Optional: Run `install.bat` for system-wide installation with desktop shortcut
+
 ## Usage
 
 Run the application:
