@@ -30,7 +30,7 @@ class ActionsMixin:
 
         # Apply dark theme to dialog if in dark mode
         if self.dark_mode:
-            about_win.configure(bg="#0f0f0f")
+            about_win.configure(bg=self.setting_color("dark_window_bg", "#0f0f0f"))
         about_win.resizable(False, False)
 
         main_frame = ttk.Frame(about_win, padding=20)
@@ -55,7 +55,12 @@ class ActionsMixin:
         ttk.Label(main_frame, text="Explore and analyze directory structures with interactive treemaps.").pack(pady=(0, 10))
         ttk.Label(main_frame, text="© 2026 Jan-Erik Labbas. All rights reserved.").pack(pady=(0, 5))
         ttk.Label(main_frame, text="Licensed under MIT License.").pack(pady=(0, 5))
-        paypal_label = ttk.Label(main_frame, text="Support me on PayPal: paypal.me/jamps3", cursor="hand2", foreground="#0000FF")
+        paypal_label = ttk.Label(
+            main_frame,
+            text="Support me on PayPal: paypal.me/jamps3",
+            cursor="hand2",
+            foreground=self.setting_color("link_color", "#0000ff")
+        )
         paypal_label.pack(pady=(0, 10))
         paypal_label.bind("<Button-1>", lambda e: self.open_paypal())
         ttk.Label(main_frame, text="Version 1.0").pack(pady=(0, 10))
@@ -117,7 +122,10 @@ class ActionsMixin:
     def color_for_node(self, node, depth):
         # Special case for free space
         if node.name == "Free Space":
-            return "#888888" if self.dark_mode else "#c0c0c0"  # Distinct gray
+            return self.setting_color(
+                "free_space_color",
+                "#888888" if self.dark_mode else "#c0c0c0"
+            )
 
         # Directories: check dir_color custom first
         if node.is_dir:
@@ -126,8 +134,8 @@ class ActionsMixin:
                 return custom
             # Use theme-based directory color
             if self.dark_mode:
-                base = 60 - min(depth * 6, 40)
-                return f"#{base:02x}{120 + min(depth * 15, 80):02x}{200 + min(depth * 10, 55):02x}"
+                base = 30 - min(depth * 4, 20)
+                return f"#{base:02x}{70 + min(depth * 8, 35):02x}{110 + min(depth * 6, 25):02x}"
             else:
                 base = 180 - min(depth * 14, 120)
                 return f"#{base:02x}{220:02x}{255:02x}"
@@ -147,20 +155,23 @@ class ActionsMixin:
 
         # Use theme-based file color
         if self.dark_mode:
-            base = 220 + min(depth * 10, 35)
-            return f"#{255:02x}{base:02x}{100 + min(depth * 10, 55):02x}"
+            base = 140 + min(depth * 6, 30)
+            return f"#{200:02x}{base:02x}{60 + min(depth * 6, 25):02x}"
         else:
             base = 230 - min(depth * 10, 120)
             return f"#{255:02x}{base:02x}{120:02x}"
 
     def access_denied_color(self):
-        return "#6f4b4b" if self.dark_mode else "#d8b3b3"
+        return self.setting_color(
+            "access_denied_color",
+            "#6f4b4b" if self.dark_mode else "#d8b3b3"
+        )
 
     def dim_color(self, hex_color):
         """Darken a hex color by 50% for search dimming effect."""
         hex_color = hex_color.lstrip('#')
         if len(hex_color) != 6:
-            return "#888888"
+            return self.setting_color("invalid_color", "#888888")
         try:
             r = int(hex_color[0:2], 16)
             g = int(hex_color[2:4], 16)
@@ -170,7 +181,7 @@ class ActionsMixin:
             b = int(b * 0.5)
             return f"#{r:02x}{g:02x}{b:02x}"
         except ValueError:
-            return "#888888"
+            return self.setting_color("invalid_color", "#888888")
 
     def toggle_quick_zoom(self):
         self.quick_zoom_mode = not self.quick_zoom_mode
@@ -320,7 +331,7 @@ class ActionsMixin:
 
         # Apply dark theme to dialog if in dark mode
         if self.dark_mode:
-            color_win.configure(bg="#0f0f0f")
+            color_win.configure(bg=self.setting_color("dark_window_bg", "#0f0f0f"))
         color_win.resizable(False, False)
 
         main_frame = ttk.Frame(color_win, padding=20)
@@ -574,7 +585,7 @@ class ActionsMixin:
         """Dialog for customizing colors."""
         colors_win = tk.Toplevel(self)
         colors_win.title("Color Settings")
-        width, height = 420, 500
+        width, height = 620, 640
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         colors_win.geometry(f"{width}x{height}+{x}+{y}")
@@ -583,55 +594,123 @@ class ActionsMixin:
 
         # Apply dark theme to dialog if in dark mode
         if self.dark_mode:
-            colors_win.configure(bg="#0f0f0f")
+            colors_win.configure(bg=self.setting_color("dark_window_bg", "#0f0f0f"))
 
         main_frame = ttk.Frame(colors_win, padding=20)
         main_frame.pack(fill="both", expand=True)
 
-        ttk.Label(main_frame, text="Directory Color (hex or R,G,B):").pack(anchor="w")
-        dir_color_var = tk.StringVar(value=self.settings.get("dir_color", ""))
-        ttk.Entry(main_frame, textvariable=dir_color_var).pack(fill="x", pady=(0, 10))
+        body_frame = ttk.Frame(main_frame)
+        body_frame.pack(fill="both", expand=True)
+        canvas_bg = self.setting_color("dark_window_bg", "#0f0f0f") if self.dark_mode else self.setting_color("light_window_bg", "#f0f0f0")
+        canvas = tk.Canvas(body_frame, bg=canvas_bg, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(body_frame, orient="vertical", command=canvas.yview)
+        content = ttk.Frame(canvas)
+        content.bind(
+            "<Configure>",
+            lambda event: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        content_window = canvas.create_window((0, 0), window=content, anchor="nw")
+        canvas.bind(
+            "<Configure>",
+            lambda event: canvas.itemconfigure(content_window, width=event.width)
+        )
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-        ttk.Label(main_frame, text="File Color (hex or R,G,B fallback):").pack(anchor="w")
-        file_color_var = tk.StringVar(value=self.settings.get("file_color", ""))
-        ttk.Entry(main_frame, textvariable=file_color_var).pack(fill="x", pady=(0, 10))
+        color_vars = {}
 
-        ttk.Separator(main_frame, orient="horizontal").pack(fill="x", pady=(10, 15))
+        def add_color(parent, key, label):
+            row = ttk.Frame(parent)
+            row.pack(fill="x", pady=3)
+            ttk.Label(row, text=label, width=34).pack(side="left")
+            var = tk.StringVar(value=self.settings.get(key, ""))
+            ttk.Entry(row, textvariable=var).pack(side="left", fill="x", expand=True)
+            color_vars[key] = var
 
-        ttk.Label(main_frame, text="Selection Outline Color (hex, e.g., #ffcc00):").pack(anchor="w")
-        selection_color_var = tk.StringVar(value=self.settings.get("selection_color", "#ffcc00"))
-        ttk.Entry(main_frame, textvariable=selection_color_var).pack(fill="x", pady=(0, 10))
+        sections = [
+            (
+                "Treemap",
+                [
+                    ("dir_color", "Directory color"),
+                    ("file_color", "File fallback color"),
+                    ("selection_color", "Selection outline color"),
+                    ("outline_color", "Normal outline color"),
+                    ("label_color", "Label text color"),
+                    ("canvas_bg", "Canvas background color"),
+                    ("free_space_color", "Free space color"),
+                    ("access_denied_color", "Access denied color"),
+                    ("invalid_color", "Invalid/dim fallback color"),
+                    ("recent_hour_outline_color", "Last-hour outline color"),
+                    ("recent_outline_color", "Recent outline color"),
+                    ("recent_hour_indicator_color", "Last-hour indicator color"),
+                    ("recent_hour_indicator_text_color", "Last-hour indicator text"),
+                    ("recent_indicator_color", "Recent indicator color"),
+                ],
+            ),
+            (
+                "Application",
+                [
+                    ("link_color", "Link color"),
+                    ("log_bg", "Log background"),
+                    ("log_fg", "Log text"),
+                    ("light_window_bg", "Light window background"),
+                    ("light_surface_bg", "Light surface background"),
+                    ("light_surface_alt_bg", "Light alternate surface"),
+                    ("light_border_color", "Light border color"),
+                    ("light_text_color", "Light text color"),
+                    ("light_muted_text_color", "Light muted text color"),
+                    ("light_accent_color", "Light accent color"),
+                    ("light_button_bg", "Light button background"),
+                    ("light_button_active_bg", "Light active button"),
+                    ("light_input_bg", "Light input background"),
+                    ("light_input_text_color", "Light input text"),
+                    ("light_select_bg", "Light selection background"),
+                    ("light_select_text_color", "Light selection text"),
+                    ("dark_window_bg", "Dark window background"),
+                    ("dark_surface_bg", "Dark surface background"),
+                    ("dark_surface_alt_bg", "Dark alternate surface"),
+                    ("dark_border_color", "Dark border color"),
+                    ("dark_text_color", "Dark text color"),
+                    ("dark_muted_text_color", "Dark muted text color"),
+                    ("dark_accent_color", "Dark accent color"),
+                    ("dark_button_bg", "Dark button background"),
+                    ("dark_button_active_bg", "Dark active button"),
+                    ("dark_input_bg", "Dark input background"),
+                    ("dark_input_text_color", "Dark input text"),
+                    ("dark_select_bg", "Dark selection background"),
+                    ("dark_select_text_color", "Dark selection text"),
+                ],
+            ),
+        ]
 
-        ttk.Label(main_frame, text="Normal Outline Color (hex or empty for theme default):").pack(anchor="w")
-        outline_color_var = tk.StringVar(value=self.settings.get("outline_color", ""))
-        ttk.Entry(main_frame, textvariable=outline_color_var).pack(fill="x", pady=(0, 10))
-
-        ttk.Label(main_frame, text="Label Text Color (hex or empty for theme default):").pack(anchor="w")
-        label_color_var = tk.StringVar(value=self.settings.get("label_color", ""))
-        ttk.Entry(main_frame, textvariable=label_color_var).pack(fill="x", pady=(0, 10))
-
-        ttk.Label(main_frame, text="Canvas Background Color (hex or empty for theme default):").pack(anchor="w")
-        canvas_bg_var = tk.StringVar(value=self.settings.get("canvas_bg", ""))
-        ttk.Entry(main_frame, textvariable=canvas_bg_var).pack(fill="x", pady=(0, 20))
+        for title, items in sections:
+            ttk.Label(content, text=title, style="Heading.TLabel").pack(anchor="w", pady=(0, 8))
+            for key, label in items:
+                add_color(content, key, label)
+            ttk.Separator(content, orient="horizontal").pack(fill="x", pady=(12, 14))
 
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill="x", pady=(10, 0))
 
-        def save_colors():
-            self.settings["dir_color"] = dir_color_var.get()
-            self.settings["file_color"] = file_color_var.get()
-            self.settings["selection_color"] = selection_color_var.get()
-            self.settings["outline_color"] = outline_color_var.get()
-            self.settings["label_color"] = label_color_var.get()
-            self.settings["canvas_bg"] = canvas_bg_var.get()
+        def apply_colors(close=False):
+            for key, var in color_vars.items():
+                self.settings[key] = var.get().strip()
             self.save_settings()
             self.apply_theme()
+            updated_canvas_bg = self.setting_color("dark_window_bg", "#0f0f0f") if self.dark_mode else self.setting_color("light_window_bg", "#f0f0f0")
+            colors_win.configure(bg=updated_canvas_bg)
+            canvas.configure(bg=updated_canvas_bg)
+            self._style_widget_tree(colors_win)
             if self.current_node:
                 self.draw()
-            colors_win.destroy()
+            if close:
+                colors_win.destroy()
 
-        ttk.Button(button_frame, text="Save", command=save_colors).pack(side="right", padx=(5, 0))
+        ttk.Button(button_frame, text="Apply", command=lambda: apply_colors(False)).pack(side="right", padx=(5, 0))
+        ttk.Button(button_frame, text="Save", command=lambda: apply_colors(True)).pack(side="right", padx=(5, 0))
         ttk.Button(button_frame, text="Cancel", command=colors_win.destroy).pack(side="right")
+        self._style_widget_tree(colors_win)
 
     def show_file_type_colors(self):
         """Dialog for configuring file type category colors."""
@@ -646,7 +725,7 @@ class ActionsMixin:
 
         # Apply dark theme to dialog if in dark mode
         if self.dark_mode:
-            ft_win.configure(bg="#0f0f0f")
+            ft_win.configure(bg=self.setting_color("dark_window_bg", "#0f0f0f"))
         ft_win.resizable(False, False)
 
         main_frame = ttk.Frame(ft_win, padding=20)
@@ -740,7 +819,7 @@ class ActionsMixin:
 
         # Apply dark theme to dialog if in dark mode
         if self.dark_mode:
-            log_win.configure(bg="#0f0f0f")
+            log_win.configure(bg=self.setting_color("dark_window_bg", "#0f0f0f"))
 
         main_frame = ttk.Frame(log_win, padding=20)
         main_frame.pack(fill="both", expand=True)
@@ -756,14 +835,16 @@ class ActionsMixin:
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill="x", pady=(10, 0))
 
-        def save_log_colors():
+        def apply_log_colors(close=False):
             self.settings["log_bg"] = log_bg_var.get()
             self.settings["log_fg"] = log_fg_var.get()
             self.save_settings()
             self.apply_theme()
-            log_win.destroy()
+            if close:
+                log_win.destroy()
 
-        ttk.Button(button_frame, text="Save", command=save_log_colors).pack(side="right", padx=(5, 0))
+        ttk.Button(button_frame, text="Apply", command=lambda: apply_log_colors(False)).pack(side="right", padx=(5, 0))
+        ttk.Button(button_frame, text="Save", command=lambda: apply_log_colors(True)).pack(side="right", padx=(5, 0))
         ttk.Button(button_frame, text="Cancel", command=log_win.destroy).pack(side="right")
 
     def show_advanced_search(self):
@@ -777,7 +858,7 @@ class ActionsMixin:
 
         # Apply dark theme to dialog if in dark mode
         if self.dark_mode:
-            search_win.configure(bg="#0f0f0f")
+            search_win.configure(bg=self.setting_color("dark_window_bg", "#0f0f0f"))
 
         # Create main frame
         main_frame = ttk.Frame(search_win, padding="10")
@@ -1114,63 +1195,24 @@ class ActionsMixin:
             self.update_bookmarks_panel_list()
         self.save_bookmarks()
 
-        messagebox.showinfo("Bookmark Added", f"Added '{path}' to bookmarks.")
-
     def remove_selected_bookmark(self):
-        """Remove the selected bookmark."""
-        # Check which listbox has selection
-        listbox = None
-        if self.bookmarks_tab_listbox.curselection():
-            listbox = self.bookmarks_tab_listbox
-        elif self.bookmarks_panel_listbox.curselection():
-            listbox = self.bookmarks_panel_listbox
-
-        if not listbox:
-            messagebox.showinfo("No Selection", "Please select a bookmark to remove.")
+        """Remove the most recent bookmark (cards have individual × buttons)."""
+        if not self.bookmarked_paths:
             return
-
-        selection = listbox.curselection()
-        if not selection:
-            messagebox.showinfo("No Selection", "Please select a bookmark to remove.")
-            return
-
-        index = selection[0]
-        path = self.bookmarked_paths[index]
-
+        path = self.bookmarked_paths[-1]
         if messagebox.askyesno("Remove Bookmark", f"Remove bookmark for '{path}'?"):
             del self.bookmarks[path]
-            self.bookmarked_paths.pop(index)
+            self.bookmarked_paths.pop()
             self.update_bookmarks_list()
             if self.bookmarks_visible:
                 self.update_bookmarks_panel_list()
             self.save_bookmarks()
 
     def browse_selected_bookmark(self, event=None):
-        """Browse to the selected bookmark."""
-        # Determine which listbox triggered this
-        listbox = None
-        if event and hasattr(event, 'widget'):
-            listbox = event.widget
-        else:
-            # Check which listbox has selection
-            if self.bookmarks_tab_listbox.curselection():
-                listbox = self.bookmarks_tab_listbox
-            elif self.bookmarks_panel_listbox.curselection():
-                listbox = self.bookmarks_panel_listbox
-
-        if not listbox:
-            messagebox.showinfo("No Selection", "Please select a bookmark to browse.")
+        """Browse the most recent bookmark (or use card click)."""
+        if not self.bookmarked_paths:
             return
-
-        selection = listbox.curselection()
-        if not selection:
-            messagebox.showinfo("No Selection", "Please select a bookmark to browse.")
-            return
-
-        index = selection[0]
-        path = self.bookmarked_paths[index]
-
-        # Switch to this bookmarked directory
+        path = self.bookmarked_paths[-1]
         self.switch_to_bookmark(path)
 
     def on_bookmark_double_click(self, event):
@@ -1221,20 +1263,36 @@ class ActionsMixin:
         return None
 
     def update_bookmarks_list(self):
-        """Update the bookmarks listbox in the tab."""
-        self.bookmarks_tab_listbox.delete(0, tk.END)
+        """Update the bookmark cards in the tab."""
+        for widget in self.bookmarks_tab_cards.winfo_children():
+            widget.destroy()
         for path in self.bookmarked_paths:
-            # Show just the directory name, full path as tooltip
-            name = os.path.basename(path) or path
-            self.bookmarks_tab_listbox.insert(tk.END, name)
+            self.create_bookmark_card(self.bookmarks_tab_cards, path, is_tab=True)
 
     def update_bookmarks_panel_list(self):
-        """Update the bookmarks listbox in the side panel."""
-        self.bookmarks_panel_listbox.delete(0, tk.END)
+        """Update the bookmark cards in the side panel."""
+        for widget in self.bookmarks_panel_cards.winfo_children():
+            widget.destroy()
         for path in self.bookmarked_paths:
-            # Show just the directory name, full path as tooltip
-            name = os.path.basename(path) or path
-            self.bookmarks_panel_listbox.insert(tk.END, name)
+            self.create_bookmark_card(self.bookmarks_panel_cards, path, is_tab=False)
+
+    def create_bookmark_card(self, parent, path, is_tab):
+        card = ttk.Frame(parent, relief="ridge", borderwidth=1)
+        card.pack(fill="x", padx=4, pady=3)
+
+        # Full path label
+        label = ttk.Label(card, text=path, anchor="w", wraplength=280)
+        label.pack(side="left", fill="x", expand=True, padx=8, pady=6)
+
+        # Remove button
+        remove_btn = ttk.Button(card, text="×", width=3, command=lambda p=path: self.remove_bookmark_by_path(p))
+        remove_btn.pack(side="right", padx=4)
+
+        # Click to browse
+        def browse(event, p=path):
+            self.switch_to_bookmark(p)
+        card.bind("<Button-1>", browse)
+        label.bind("<Button-1>", browse)
 
     def save_bookmarks(self):
         """Save bookmarks to settings."""
@@ -1249,6 +1307,16 @@ class ActionsMixin:
         self.update_bookmarks_list()
         if self.bookmarks_visible:
             self.update_bookmarks_panel_list()
+
+    def remove_bookmark_by_path(self, path):
+        if path in self.bookmarks:
+            del self.bookmarks[path]
+        if path in self.bookmarked_paths:
+            self.bookmarked_paths.remove(path)
+        self.update_bookmarks_list()
+        if self.bookmarks_visible:
+            self.update_bookmarks_panel_list()
+        self.save_bookmarks()
 
     def toggle_bookmarks_panel(self):
         """Toggle the bookmarks side panel visibility."""

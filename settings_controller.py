@@ -1,6 +1,66 @@
 import json
+import sys
 import tkinter as tk
 from tkinter import ttk
+
+
+LIGHT_THEME = {
+    "window": "#f0f0f0",
+    "surface": "#ffffff",
+    "surface_alt": "#eef2f7",
+    "border": "#cfd7e3",
+    "text": "#1f2933",
+    "muted": "#52616f",
+    "accent": "#2563eb",
+    "button": "#e6edf7",
+    "button_active": "#d6e2f2",
+    "entry": "#ffffff",
+    "entry_text": "#111827",
+    "select": "#cfe0ff",
+    "select_text": "#0f172a",
+}
+
+DARK_THEME = {
+    "window": "#0f0f0f",
+    "surface": "#1f2937",
+    "surface_alt": "#273445",
+    "border": "#4b5563",
+    "text": "#f3f4f6",
+    "muted": "#cbd5e1",
+    "accent": "#60a5fa",
+    "button": "#374151",
+    "button_active": "#4b5563",
+    "entry": "#111827",
+    "entry_text": "#f9fafb",
+    "select": "#1d4ed8",
+    "select_text": "#ffffff",
+}
+
+
+def system_prefers_dark_theme():
+    if sys.platform != "win32":
+        return None  # not available
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize") as key:
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return value == 0
+    except Exception:
+        return None  # detection failed → fallback to dark
+
+
+def set_windows_dark_title_bar(window, enabled: bool) -> None:
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        window.update_idletasks()
+        hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
+        value = ctypes.c_int(1 if enabled else 0)
+        for attribute in (20, 19):
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, attribute, ctypes.byref(value), ctypes.sizeof(value))
+    except Exception:
+        pass
 
 
 class SettingsMixin:
@@ -11,6 +71,7 @@ class SettingsMixin:
         except (FileNotFoundError, json.JSONDecodeError):
             self.settings = {}
         defaults = {
+            "theme_mode": "system",
             "dark_mode": False,
             "min_density": 1,
             "disable_delete": False,
@@ -20,6 +81,7 @@ class SettingsMixin:
             "max_scan_threads": 6,
             "show_recent_modified": True,
             "recent_modified_days": 7,
+            "recent_modified_outline_style": "indicator_only",
             "animated_zoom": False,
             "animation_mode": "none",
             "animation_duration": 160,
@@ -31,6 +93,41 @@ class SettingsMixin:
             "outline_color": "",
             "label_color": "",
             "canvas_bg": "",
+            "recent_hour_outline_color": "",
+            "recent_outline_color": "",
+            "recent_hour_indicator_color": "",
+            "recent_hour_indicator_text_color": "",
+            "recent_indicator_color": "",
+            "free_space_color": "",
+            "access_denied_color": "",
+            "invalid_color": "",
+            "link_color": "",
+            "light_window_bg": LIGHT_THEME["window"],
+            "light_surface_bg": LIGHT_THEME["surface"],
+            "light_surface_alt_bg": LIGHT_THEME["surface_alt"],
+            "light_border_color": LIGHT_THEME["border"],
+            "light_text_color": LIGHT_THEME["text"],
+            "light_muted_text_color": LIGHT_THEME["muted"],
+            "light_accent_color": LIGHT_THEME["accent"],
+            "light_button_bg": LIGHT_THEME["button"],
+            "light_button_active_bg": LIGHT_THEME["button_active"],
+            "light_input_bg": LIGHT_THEME["entry"],
+            "light_input_text_color": LIGHT_THEME["entry_text"],
+            "light_select_bg": LIGHT_THEME["select"],
+            "light_select_text_color": LIGHT_THEME["select_text"],
+            "dark_window_bg": DARK_THEME["window"],
+            "dark_surface_bg": DARK_THEME["surface"],
+            "dark_surface_alt_bg": DARK_THEME["surface_alt"],
+            "dark_border_color": DARK_THEME["border"],
+            "dark_text_color": DARK_THEME["text"],
+            "dark_muted_text_color": DARK_THEME["muted"],
+            "dark_accent_color": DARK_THEME["accent"],
+            "dark_button_bg": DARK_THEME["button"],
+            "dark_button_active_bg": DARK_THEME["button_active"],
+            "dark_input_bg": DARK_THEME["entry"],
+            "dark_input_text_color": DARK_THEME["entry_text"],
+            "dark_select_bg": DARK_THEME["select"],
+            "dark_select_text_color": DARK_THEME["select_text"],
             "ui_font_family": "Segoe UI",
             "ui_font_size": 9,
             "heading_font_size": 10,
@@ -56,7 +153,20 @@ class SettingsMixin:
                 self.settings[key] = value
         if self.settings.get("animated_zoom", False) and self.settings.get("animation_mode", "none") == "none":
             self.settings["animation_mode"] = "zoom"
-        self.dark_mode = self.settings.get("dark_mode", False)
+        theme_mode = self.settings.get("theme_mode", "system")
+        if theme_mode == "dark":
+            self.dark_mode = True
+        elif theme_mode == "light":
+            self.dark_mode = False
+        else:  # system
+            pref = system_prefers_dark_theme()
+            self.dark_mode = pref if pref is not None else True
+
+    def setting_color(self, key, default):
+        value = self.settings.get(key, "")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        return default
 
     def apply_geometry(self):
         """Restore window position and size if remembered."""
@@ -105,90 +215,105 @@ class SettingsMixin:
             json.dump(self.settings, f)
 
     def apply_theme(self):
-        ui_font = (
-            self.settings.get("ui_font_family", "Segoe UI"),
-            self.get_setting_int("ui_font_size", 9, 6, 24)
+        ui_font = (self.settings.get("ui_font_family", "Segoe UI"), self.get_setting_int("ui_font_size", 9, 6, 24))
+
+        theme_name = "dark" if self.dark_mode else "light"
+        base_colors = DARK_THEME if self.dark_mode else LIGHT_THEME
+        prefix = "dark" if self.dark_mode else "light"
+        colors = {
+            "window": self.setting_color(f"{prefix}_window_bg", base_colors["window"]),
+            "surface": self.setting_color(f"{prefix}_surface_bg", base_colors["surface"]),
+            "surface_alt": self.setting_color(f"{prefix}_surface_alt_bg", base_colors["surface_alt"]),
+            "border": self.setting_color(f"{prefix}_border_color", base_colors["border"]),
+            "text": self.setting_color(f"{prefix}_text_color", base_colors["text"]),
+            "muted": self.setting_color(f"{prefix}_muted_text_color", base_colors["muted"]),
+            "accent": self.setting_color(f"{prefix}_accent_color", base_colors["accent"]),
+            "button": self.setting_color(f"{prefix}_button_bg", base_colors["button"]),
+            "button_active": self.setting_color(f"{prefix}_button_active_bg", base_colors["button_active"]),
+            "entry": self.setting_color(f"{prefix}_input_bg", base_colors["entry"]),
+            "entry_text": self.setting_color(f"{prefix}_input_text_color", base_colors["entry_text"]),
+            "select": self.setting_color(f"{prefix}_select_bg", base_colors["select"]),
+            "select_text": self.setting_color(f"{prefix}_select_text_color", base_colors["select_text"]),
+        }
+
+        self.configure(bg=colors["window"])
+        self.style = ttk.Style(self)
+        self.style.theme_use("clam")
+
+        # Base ttk styles
+        self.style.configure(".", font=ui_font, background=colors["window"], foreground=colors["text"])
+        self.style.configure("TFrame", background=colors["window"])
+        self.style.configure("TNotebook", background=colors["window"], borderwidth=1, bordercolor=colors["border"])
+        self.style.configure("TNotebook.Tab", background=colors["surface"], foreground=colors["text"], font=ui_font)
+        self.style.map("TNotebook.Tab", background=[("selected", colors["surface_alt"])])
+        self.style.configure("TButton", background=colors["button"], foreground=colors["text"])
+        self.style.map("TButton", background=[("active", colors["button_active"])])
+        self.style.configure("TLabel", background=colors["window"], foreground=colors["text"])
+        self.style.configure(
+            "TEntry",
+            fieldbackground=colors["entry"],
+            foreground=colors["entry_text"],
+            insertcolor=colors["entry_text"]
         )
-        heading_font = (
-            self.settings.get("ui_font_family", "Segoe UI"),
-            self.get_setting_int("heading_font_size", 10, 6, 28),
-            "bold"
-        )
+        self.style.configure("TCombobox", fieldbackground=colors["entry"], foreground=colors["entry_text"])
+        self.style.configure("TRadiobutton", background=colors["window"], foreground=colors["text"])
+        self.style.map("TRadiobutton",
+                       background=[("active", colors["surface_alt"])],
+                       foreground=[("active", colors["text"])])
+        self.style.configure("TCheckbutton", background=colors["window"], foreground=colors["text"])
 
-        if self.dark_mode:
-            # Dark theme - deeper, more consistent colors
-            self.configure(bg="#0f0f0f")
-            base_bg = "#0f0f0f"
-            default_canvas_bg = "#1a1a1a"
-            self.style = ttk.Style()
-            self.style.configure(".", font=ui_font)
-            self.style.configure("TFrame", background="#0f0f0f")
-            self.style.configure("TNotebook", background="#0f0f0f", borderwidth=0)
-            self.style.configure("TNotebook.Tab", background="#1a1a1a", foreground="#cccccc", font=ui_font, borderwidth=1, relief="flat")
-            self.style.map("TNotebook.Tab",
-                          background=[("selected", "#2a2a2a"), ("active", "#222222")],
-                          foreground=[("selected", "#ffffff"), ("active", "#ffffff")])
-            self.style.configure("TButton", background="#2a2a2a", foreground="#cccccc", font=ui_font, borderwidth=1, relief="flat")
-            self.style.map("TButton",
-                          background=[("active", "#3a3a3a"), ("pressed", "#1a1a1a")],
-                          foreground=[("active", "#ffffff"), ("pressed", "#cccccc")])
-            self.style.configure("TLabel", background="#0f0f0f", foreground="#cccccc", font=ui_font)
-            self.style.configure("Heading.TLabel", background="#0f0f0f", foreground="#cccccc", font=heading_font)
-            # Additional dark theme elements
-            self.style.configure("TEntry", fieldbackground="#2a2a2a", foreground="#cccccc", insertcolor="#cccccc")
-            self.style.configure("TCombobox", fieldbackground="#2a2a2a", foreground="#cccccc")
-            self.style.configure("TCheckbutton", background="#0f0f0f", foreground="#cccccc")
-            self.style.configure("TRadiobutton", background="#0f0f0f", foreground="#cccccc")
-            self.style.configure("TFrame", background="#0f0f0f")
-            self.style.configure("TLabelFrame", background="#0f0f0f", foreground="#cccccc")
-            self.style.configure("TLabelFrame.Label", background="#0f0f0f", foreground="#cccccc", font=heading_font)
-        else:
-            # Light theme
-            self.configure(bg="#f0f0f0")
-            base_bg = "#f0f0f0"
-            default_canvas_bg = "white"
-            self.style = ttk.Style()
-            self.style.configure(".", font=ui_font)
-            self.style.configure("TFrame", background="#f0f0f0")
-            self.style.configure("TNotebook", background="#f0f0f0", borderwidth=0)
-            self.style.configure("TNotebook.Tab", background="#e0e0e0", foreground="black", font=ui_font)
-            self.style.map("TNotebook.Tab", background=[("selected", "#f8f8f8")])
-            self.style.configure("TButton", background="#e0e0e0", foreground="black", font=ui_font)
-            self.style.map("TButton", background=[("active", "#d0d0d0")])
-            self.style.configure("TLabel", background="#f0f0f0", foreground="black", font=ui_font)
-            self.style.configure("Heading.TLabel", background="#f0f0f0", foreground="black", font=heading_font)
+        # Canvas
+        canvas_bg = self.settings.get("canvas_bg", "") or colors["surface"]
+        if hasattr(self, "canvas"):
+            self.canvas.configure(bg=canvas_bg)
 
-        # Apply canvas background (custom or default)
-        canvas_bg = self.settings.get("canvas_bg", default_canvas_bg)
-        if not canvas_bg:
-            canvas_bg = default_canvas_bg
-        self.canvas.configure(bg=canvas_bg)
-        if hasattr(self, "treemap_tab"):
-            self.treemap_tab.configure(style="Treemap.TFrame")
-            self.style.configure("Treemap.TFrame", background=canvas_bg)
-        if hasattr(self, "main_notebook"):
-            self.style.configure("Main.TNotebook", background=base_bg, borderwidth=0)
-            self.main_notebook.configure(style="Main.TNotebook")
-
+        # Log
         if hasattr(self, "log_text"):
-            log_bg = self.settings.get("log_bg", "")
-            if not log_bg:
-                log_bg = "#1f1f1f" if self.dark_mode else "white"
-            log_fg = self.settings.get("log_fg", "")
-            if not log_fg:
-                log_fg = "#dddddd" if self.dark_mode else "black"
-            log_insert = log_fg  # Use text color for cursor
-            self.log_text.configure(
-                bg=log_bg,
-                fg=log_fg,
-                insertbackground=log_insert,
-                font=ui_font
-            )
-            if hasattr(self, "log_tab"):
-                self.log_tab.configure(style="Log.TFrame")
-                self.style.configure("Log.TFrame", background=log_bg)
-            if hasattr(self, "log_toolbar"):
-                self.log_toolbar.configure(style="Log.TFrame")
+            log_bg = self.settings.get("log_bg", "") or colors["surface"]
+            log_fg = self.settings.get("log_fg", "") or colors["text"]
+            self.log_text.configure(bg=log_bg, fg=log_fg, insertbackground=log_fg)
+
+        # Style all widgets recursively
+        self._style_widget_tree(self)
+
+        # Windows dark title bar
+        self.update_idletasks()
+        set_windows_dark_title_bar(self, self.dark_mode)
+
+        # Redraw treemap if needed
+        if hasattr(self, "current_node") and self.current_node:
+            self.draw()
+
+    def _style_widget_tree(self, widget):
+        base_colors = DARK_THEME if self.dark_mode else LIGHT_THEME
+        prefix = "dark" if self.dark_mode else "light"
+        colors = {
+            "window": self.setting_color(f"{prefix}_window_bg", base_colors["window"]),
+            "surface": self.setting_color(f"{prefix}_surface_bg", base_colors["surface"]),
+            "entry": self.setting_color(f"{prefix}_input_bg", base_colors["entry"]),
+            "entry_text": self.setting_color(f"{prefix}_input_text_color", base_colors["entry_text"]),
+            "select": self.setting_color(f"{prefix}_select_bg", base_colors["select"]),
+            "select_text": self.setting_color(f"{prefix}_select_text_color", base_colors["select_text"]),
+            "text": self.setting_color(f"{prefix}_text_color", base_colors["text"]),
+        }
+        try:
+            wclass = widget.winfo_class()
+            if wclass in ("Tk", "Toplevel", "Frame"):
+                widget.configure(background=colors["window"])
+            elif isinstance(widget, tk.Canvas):
+                widget.configure(background=colors["surface"])
+            elif isinstance(widget, tk.Entry):
+                widget.configure(background=colors["entry"], foreground=colors["entry_text"], insertbackground=colors["entry_text"])
+            elif isinstance(widget, tk.Listbox):
+                widget.configure(background=colors["entry"], foreground=colors["entry_text"],
+                                 selectbackground=colors["select"], selectforeground=colors["select_text"])
+            elif isinstance(widget, tk.Text):
+                widget.configure(background=colors["surface"], foreground=colors["text"], insertbackground=colors["text"])
+        except Exception:
+            pass
+
+        for child in widget.winfo_children():
+            self._style_widget_tree(child)
 
     def get_setting_int(self, key, default, minimum, maximum):
         try:
@@ -223,9 +348,10 @@ class SettingsMixin:
         settings_win.grab_set()
         settings_win.resizable(False, False)
 
-        # Apply dark theme to dialog if in dark mode
-        if self.dark_mode:
-            settings_win.configure(bg="#0f0f0f")
+        # Apply title bar and correct theme colors to settings dialog
+        set_windows_dark_title_bar(settings_win, self.dark_mode)
+        colors = DARK_THEME if self.dark_mode else LIGHT_THEME
+        settings_win.configure(bg=colors["window"])
 
         main_frame = ttk.Frame(settings_win, padding=12)
         main_frame.pack(fill="both", expand=True)
@@ -250,12 +376,15 @@ class SettingsMixin:
 
         ttk.Label(theme_frame, text="Mode:").pack(side="left")
 
-        self.theme_var = tk.StringVar(value="light" if not self.dark_mode else "dark")
+        current_mode = self.settings.get("theme_mode", "system")
+        self.theme_var = tk.StringVar(value=current_mode)
 
+        ttk.Radiobutton(theme_frame, text="System default", variable=self.theme_var, value="system",
+                        command=lambda: self.on_theme_change("system")).pack(side="left", padx=(10, 15))
         ttk.Radiobutton(theme_frame, text="Light", variable=self.theme_var, value="light",
-                        command=lambda: self.on_theme_change("light")).pack(side="left", padx=(10, 20))
+                        command=lambda: self.on_theme_change("light")).pack(side="left", padx=(0, 15))
         ttk.Radiobutton(theme_frame, text="Dark", variable=self.theme_var, value="dark",
-                        command=lambda: self.on_theme_change("dark")).pack(side="left", padx=(0, 20))
+                        command=lambda: self.on_theme_change("dark")).pack(side="left", padx=(0, 15))
 
         ttk.Label(appearance_tab, text="Colors", style="Heading.TLabel").pack(anchor="w", pady=(8, 10))
         ttk.Button(appearance_tab, text="General Colors...", command=self.show_color_settings).pack(anchor="w", pady=(0, 8))
@@ -375,6 +504,20 @@ class SettingsMixin:
             variable=self.show_recent_modified_var
         ).pack(anchor="w", pady=2)
 
+        self.recent_modified_outline_style_var = tk.StringVar(
+            value=self.settings.get("recent_modified_outline_style", "indicator_only")
+        )
+        outline_style_frame = ttk.Frame(scan_tab)
+        outline_style_frame.pack(fill="x", pady=(12, 2))
+        ttk.Label(outline_style_frame, text="Indicator style:", width=24).pack(side="left")
+        ttk.Combobox(
+            outline_style_frame,
+            textvariable=self.recent_modified_outline_style_var,
+            values=["indicator_only", "subtle_outline"],
+            width=16,
+            state="readonly"
+        ).pack(side="left")
+
         ttk.Label(scan_tab, text="Recent window (days):").pack(anchor="w", pady=(12, 2))
         self.recent_modified_days_var = tk.IntVar(value=self.get_setting_int("recent_modified_days", 7, 1, 365))
         ttk.Spinbox(scan_tab, from_=1, to=365, textvariable=self.recent_modified_days_var, width=5).pack(anchor="w", pady=(0, 10))
@@ -389,6 +532,7 @@ class SettingsMixin:
             self.settings["show_scan_progress"] = self.show_scan_progress_var.get()
             self.settings["max_scan_threads"] = self.get_int_var(self.max_threads_var, 6, 1, 32)
             self.settings["show_recent_modified"] = self.show_recent_modified_var.get()
+            self.settings["recent_modified_outline_style"] = self.recent_modified_outline_style_var.get()
             self.settings["recent_modified_days"] = self.get_int_var(self.recent_modified_days_var, 7, 1, 365)
             animation_mode = self.animation_mode_var.get()
             self.settings["animation_mode"] = animation_mode
@@ -396,7 +540,15 @@ class SettingsMixin:
             self.settings["animation_duration"] = self.get_int_var(self.animation_duration_var, 160, 50, 1000)
             self.settings["animation_steps"] = self.get_int_var(self.animation_steps_var, 10, 3, 40)
             self.settings["auto_rescan_on_delete"] = self.auto_rescan_var.get()
-            self.settings["dark_mode"] = (self.theme_var.get() == "dark")
+            self.settings["theme_mode"] = self.theme_var.get()
+            mode = self.theme_var.get()
+            if mode == "dark":
+                self.settings["dark_mode"] = True
+            elif mode == "light":
+                self.settings["dark_mode"] = False
+            else:
+                pref = system_prefers_dark_theme()
+                self.settings["dark_mode"] = pref if pref is not None else True
             self.settings["ui_font_family"] = self.ui_font_family_var.get().strip() or "Segoe UI"
             self.settings["ui_font_size"] = self.get_int_var(self.ui_font_size_var, 9, 6, 24)
             self.settings["heading_font_size"] = self.get_int_var(self.heading_font_size_var, 10, 6, 28)
@@ -421,5 +573,22 @@ class SettingsMixin:
 
         settings_win.protocol("WM_DELETE_WINDOW", cancel_and_close)
 
+        # Style the entire settings dialog
+        self._style_widget_tree(settings_win)
+
+        # Ensure dark title bar is applied to the settings window
+        settings_win.update_idletasks()
+        set_windows_dark_title_bar(settings_win, self.dark_mode)
+
     def on_theme_change(self, theme):
-        self.toggle_dark_mode(theme == "dark")
+        self.settings["theme_mode"] = theme
+        if theme == "dark":
+            self.dark_mode = True
+        elif theme == "light":
+            self.dark_mode = False
+        else:  # system
+            pref = system_prefers_dark_theme()
+            self.dark_mode = pref if pref is not None else True
+        self.apply_theme()
+        if self.current_node:
+            self.draw()

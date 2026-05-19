@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 import tkinter.font as tkfont
 import time
@@ -138,16 +139,22 @@ class RenderMixin:
         if self.selected_node and node.path == self.selected_node.path:
             outline_color = self.settings.get("selection_color", "#ffcc00")
             outline_width = 3
-        elif recency == "hour":
-            outline_color = "#00ff99" if self.dark_mode else "#008f5a"
-            outline_width = 3
-        elif recency == "recent":
-            outline_color = "#66d9ff" if self.dark_mode else "#0078d7"
-            outline_width = 2
+        elif recency and self.settings.get("recent_modified_outline_style", "indicator_only") == "subtle_outline":
+            if recency == "hour":
+                outline_color = self.setting_color(
+                    "recent_hour_outline_color",
+                    "#2f8f6a" if self.dark_mode else "#5b8f76"
+                )
+            else:
+                outline_color = self.setting_color(
+                    "recent_outline_color",
+                    "#4f7f8f" if self.dark_mode else "#6f8fa8"
+                )
+            outline_width = 1
         else:
             outline_color = self.settings.get("outline_color", "")
             if not outline_color:
-                outline_color = "#666666" if self.dark_mode else "black"
+                outline_color = "#222222" if self.dark_mode else "black"
             outline_width = 1
 
         rect = self.canvas.create_rectangle(
@@ -165,7 +172,7 @@ class RenderMixin:
 
         label_color = self.settings.get("label_color", "")
         if not label_color:
-            label_color = "white" if self.dark_mode else "black"
+            label_color = "#ffffff" if self.dark_mode else "#000000"
 
         if w > 70 and h > 25:
             # Adjust font size based on rectangle dimensions
@@ -258,8 +265,14 @@ class RenderMixin:
             return
 
         if recency == "hour":
-            fill = "#00ff99" if self.dark_mode else "#00b36b"
-            text_fill = "#002b1a" if self.dark_mode else "white"
+            fill = self.setting_color(
+                "recent_hour_indicator_color",
+                "#00ff99" if self.dark_mode else "#00b36b"
+            )
+            text_fill = self.setting_color(
+                "recent_hour_indicator_text_color",
+                "#002b1a" if self.dark_mode else "#ffffff"
+            )
             size = min(18, max(10, int(min(w, h) * 0.18)))
             x1 = x + w - size - 3
             y1 = y + 3
@@ -282,7 +295,10 @@ class RenderMixin:
             return
 
         marker_size = min(10, max(5, int(min(w, h) * 0.12)))
-        fill = "#66d9ff" if self.dark_mode else "#0078d7"
+        fill = self.setting_color(
+            "recent_indicator_color",
+            "#66d9ff" if self.dark_mode else "#0078d7"
+        )
         marker = self.canvas.create_oval(
             x + w - marker_size - 4,
             y + 4,
@@ -429,6 +445,8 @@ class RenderMixin:
         """Complete animation by setting node and drawing final state."""
         self.current_node = node
         self.selected_node = node
+        if hasattr(self, "path_var"):
+            self.path_var.set(node.path.replace("\\", "/"))
         self.draw()
         # Re-apply search if active to refresh matches on new tree
         if self.search_active:
@@ -583,4 +601,32 @@ class RenderMixin:
             if self.current_node:
                 scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
                 self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)}")
+        return "break"
+
+    def _find_node_by_path(self, node, target_path):
+        if not node:
+            return None
+        if os.path.normcase(os.path.normpath(node.path)) == os.path.normcase(target_path):
+            return node
+        for child in node.children:
+            found = self._find_node_by_path(child, target_path)
+            if found:
+                return found
+        return None
+
+    def on_path_enter(self, event):
+        if not hasattr(self, "path_var") or not self.root_node:
+            return
+        target = os.path.normcase(os.path.normpath(self.path_var.get().strip()))
+        if not target:
+            return
+        node = self._find_node_by_path(self.root_node, target)
+        if node:
+            if node.is_dir and not getattr(node, "access_denied", False):
+                self.animate_zoom(self.current_node, node)
+            else:
+                self.selected_node = node
+                self.open_selected()
+        else:
+            self.log_message(f"Path not found in tree: {target}", "WARNING")
         return "break"

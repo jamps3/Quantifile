@@ -15,6 +15,7 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
 
         self.title("Quantifile")
 
+        self.dark_mode = False
         self.load_settings()
         self.apply_geometry()
 
@@ -22,7 +23,6 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.current_node = None
         self.rect_nodes = {}
         self.node_rects = {}
-        self.dark_mode = False
 
         # Bookmarks: dict of path -> scanned root node
         self.bookmarks = {}
@@ -86,19 +86,20 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         ttk.Button(bookmarks_toolbar, text="Remove Selected", command=self.remove_selected_bookmark).pack(side="left", padx=2)
         ttk.Button(bookmarks_toolbar, text="Browse Selected", command=self.browse_selected_bookmark).pack(side="left", padx=2)
 
-        # Bookmarks listbox with scrollbar for tab
+        # Card stack container for tab
         bookmarks_frame = ttk.Frame(self.bookmarks_tab)
         bookmarks_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
 
-        self.bookmarks_tab_listbox = tk.Listbox(bookmarks_frame, selectmode="single")
-        self.bookmarks_tab_listbox.pack(side="left", fill="both", expand=True)
+        self.bookmarks_tab_canvas = tk.Canvas(bookmarks_frame, highlightthickness=0)
+        bookmarks_scrollbar = ttk.Scrollbar(bookmarks_frame, orient="vertical", command=self.bookmarks_tab_canvas.yview)
+        self.bookmarks_tab_cards = ttk.Frame(self.bookmarks_tab_canvas)
 
-        bookmarks_scrollbar = ttk.Scrollbar(bookmarks_frame, orient="vertical", command=self.bookmarks_tab_listbox.yview)
+        self.bookmarks_tab_canvas.configure(yscrollcommand=bookmarks_scrollbar.set)
         bookmarks_scrollbar.pack(side="right", fill="y")
-        self.bookmarks_tab_listbox.configure(yscrollcommand=bookmarks_scrollbar.set)
+        self.bookmarks_tab_canvas.pack(side="left", fill="both", expand=True)
 
-        self.bookmarks_tab_listbox.bind("<Double-Button-1>", self.on_bookmark_double_click)
-        self.bookmarks_tab_listbox.bind("<Return>", self.browse_selected_bookmark)
+        self.bookmarks_tab_canvas.create_window((0, 0), window=self.bookmarks_tab_cards, anchor="nw")
+        self.bookmarks_tab_cards.bind("<Configure>", lambda e: self.bookmarks_tab_canvas.configure(scrollregion=self.bookmarks_tab_canvas.bbox("all")))
 
     def create_bookmarks_panel_ui(self):
         # Bookmarks panel toolbar
@@ -108,19 +109,20 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         ttk.Button(bookmarks_toolbar, text="Add Current", command=self.add_current_to_bookmarks).pack(side="left", padx=2)
         ttk.Button(bookmarks_toolbar, text="Remove Selected", command=self.remove_selected_bookmark).pack(side="left", padx=2)
 
-        # Bookmarks listbox with scrollbar for panel
+        # Card stack container for panel
         bookmarks_frame = ttk.Frame(self.bookmarks_panel)
         bookmarks_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
 
-        self.bookmarks_panel_listbox = tk.Listbox(bookmarks_frame, selectmode="single")
-        self.bookmarks_panel_listbox.pack(side="left", fill="both", expand=True)
+        self.bookmarks_panel_canvas = tk.Canvas(bookmarks_frame, highlightthickness=0)
+        bookmarks_scrollbar = ttk.Scrollbar(bookmarks_frame, orient="vertical", command=self.bookmarks_panel_canvas.yview)
+        self.bookmarks_panel_cards = ttk.Frame(self.bookmarks_panel_canvas)
 
-        bookmarks_scrollbar = ttk.Scrollbar(bookmarks_frame, orient="vertical", command=self.bookmarks_panel_listbox.yview)
+        self.bookmarks_panel_canvas.configure(yscrollcommand=bookmarks_scrollbar.set)
         bookmarks_scrollbar.pack(side="right", fill="y")
-        self.bookmarks_panel_listbox.configure(yscrollcommand=bookmarks_scrollbar.set)
+        self.bookmarks_panel_canvas.pack(side="left", fill="both", expand=True)
 
-        self.bookmarks_panel_listbox.bind("<Double-Button-1>", self.on_bookmark_double_click)
-        self.bookmarks_panel_listbox.bind("<Return>", self.browse_selected_bookmark)
+        self.bookmarks_panel_canvas.create_window((0, 0), window=self.bookmarks_panel_cards, anchor="nw")
+        self.bookmarks_panel_cards.bind("<Configure>", lambda e: self.bookmarks_panel_canvas.configure(scrollregion=self.bookmarks_panel_canvas.bbox("all")))
 
     def truncate_text(self, text):
         import tkinter.font as tkfont
@@ -165,6 +167,15 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
 
         self.create_search_ui()
         self.create_status_ui()
+
+        # Path navigation bar
+        path_frame = ttk.Frame(self)
+        path_frame.pack(fill="x", padx=4, pady=(0, 2))
+        ttk.Label(path_frame, text="Path:").pack(side="left", padx=(0, 4))
+        self.path_var = tk.StringVar()
+        self.path_entry = ttk.Entry(path_frame, textvariable=self.path_var)
+        self.path_entry.pack(side="left", fill="x", expand=True)
+        self.path_entry.bind("<Return>", self.on_path_enter)
 
         # Progress bar (initially hidden)
         self.progress_frame = ttk.Frame(self)
