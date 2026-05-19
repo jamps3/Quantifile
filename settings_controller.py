@@ -145,8 +145,9 @@ class SettingsMixin:
                  "text": "#aaaaaa",
                  "other": ""
              },
-             "log_bg": "",
-             "log_fg": ""
+            "log_bg": "",
+            "log_fg": "",
+            "treemap_overlay_opacity": 0
         }
         for key, value in defaults.items():
             if key not in self.settings:
@@ -390,6 +391,11 @@ class SettingsMixin:
         ttk.Button(appearance_tab, text="General Colors...", command=self.show_color_settings).pack(anchor="w", pady=(0, 8))
         ttk.Button(appearance_tab, text="File Type Colors...", command=self.show_file_type_colors).pack(anchor="w", pady=(0, 8))
         ttk.Button(appearance_tab, text="Log Colors...", command=self.show_log_color_settings).pack(anchor="w", pady=(0, 16))
+        overlay_frame = ttk.Frame(appearance_tab)
+        overlay_frame.pack(fill="x", pady=(0, 16))
+        ttk.Label(overlay_frame, text="Treemap dark overlay opacity (0-100):", width=32).pack(side="left")
+        self.overlay_opacity_var = tk.IntVar(value=self.settings.get("treemap_overlay_opacity", 0))
+        ttk.Spinbox(overlay_frame, from_=0, to=100, textvariable=self.overlay_opacity_var, width=5).pack(side="left")
 
         ttk.Label(fonts_tab, text="Interface Font", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
 
@@ -557,6 +563,7 @@ class SettingsMixin:
             max_label_size = self.get_int_var(self.canvas_label_max_size_var, 8, 5, 32)
             self.settings["canvas_label_min_size"] = min_label_size
             self.settings["canvas_label_max_size"] = max(min_label_size, max_label_size)
+            self.settings["treemap_overlay_opacity"] = self.get_int_var(self.overlay_opacity_var, 0, 0, 100)
             self.dark_mode = self.settings["dark_mode"]
             self.save_settings()
             self.apply_theme()
@@ -568,7 +575,47 @@ class SettingsMixin:
             self.load_settings()
             settings_win.destroy()
 
+        def apply_changes():
+            self.settings["min_density"] = self.density_var.get()
+            self.settings["disable_delete"] = self.disable_delete_var.get()
+            self.settings["remember_window_pos"] = self.remember_pos_var.get()
+            self.settings["show_scan_progress"] = self.show_scan_progress_var.get()
+            self.settings["max_scan_threads"] = self.get_int_var(self.max_threads_var, 6, 1, 32)
+            self.settings["show_recent_modified"] = self.show_recent_modified_var.get()
+            self.settings["recent_modified_outline_style"] = self.recent_modified_outline_style_var.get()
+            self.settings["recent_modified_days"] = self.get_int_var(self.recent_modified_days_var, 7, 1, 365)
+            animation_mode = self.animation_mode_var.get()
+            self.settings["animation_mode"] = animation_mode
+            self.settings["animated_zoom"] = animation_mode != "none"
+            self.settings["animation_duration"] = self.get_int_var(self.animation_duration_var, 160, 50, 1000)
+            self.settings["animation_steps"] = self.get_int_var(self.animation_steps_var, 10, 3, 40)
+            self.settings["auto_rescan_on_delete"] = self.auto_rescan_var.get()
+            self.settings["theme_mode"] = self.theme_var.get()
+            mode = self.theme_var.get()
+            if mode == "dark":
+                self.settings["dark_mode"] = True
+            elif mode == "light":
+                self.settings["dark_mode"] = False
+            else:
+                pref = system_prefers_dark_theme()
+                self.settings["dark_mode"] = pref if pref is not None else True
+            self.settings["ui_font_family"] = self.ui_font_family_var.get().strip() or "Segoe UI"
+            self.settings["ui_font_size"] = self.get_int_var(self.ui_font_size_var, 9, 6, 24)
+            self.settings["heading_font_size"] = self.get_int_var(self.heading_font_size_var, 10, 6, 28)
+            self.settings["canvas_font_family"] = self.canvas_font_family_var.get().strip() or "Segoe UI"
+            min_label_size = self.get_int_var(self.canvas_label_min_size_var, 5, 4, 18)
+            max_label_size = self.get_int_var(self.canvas_label_max_size_var, 8, 5, 32)
+            self.settings["canvas_label_min_size"] = min_label_size
+            self.settings["canvas_label_max_size"] = max(min_label_size, max_label_size)
+            self.settings["treemap_overlay_opacity"] = self.get_int_var(self.overlay_opacity_var, 0, 0, 100)
+            self.dark_mode = self.settings["dark_mode"]
+            self.save_settings()
+            self.apply_theme()
+            if self.current_node:
+                self.draw()
+
         ttk.Button(button_frame, text="Save", command=save_and_close).pack(side="right", padx=(5, 0))
+        ttk.Button(button_frame, text="Apply", command=apply_changes).pack(side="right", padx=(5, 0))
         ttk.Button(button_frame, text="Cancel", command=cancel_and_close).pack(side="right")
 
         settings_win.protocol("WM_DELETE_WINDOW", cancel_and_close)

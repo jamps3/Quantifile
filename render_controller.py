@@ -128,10 +128,21 @@ class RenderMixin:
             return
 
         color = self.access_denied_color() if getattr(node, "access_denied", False) else self.color_for_node(node, depth)
-
-        # Apply search dimming if active and node is not a match
         if self.search_active and node.path not in self.search_matches:
             color = self.dim_color(color)
+        op = self.settings.get("treemap_overlay_opacity", 0)
+        if op > 0 and color.startswith("#") and len(color) == 7:
+            try:
+                r = int(color[1:3], 16)
+                g = int(color[3:5], 16)
+                b = int(color[5:7], 16)
+                f = max(0.2, 1 - (op / 125))
+                r = int(r * f)
+                g = int(g * f)
+                b = int(b * f)
+                color = "#%02x%02x%02x" % (r, g, b)
+            except Exception:
+                pass
 
         recency = self.modified_recency(node)
 

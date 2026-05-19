@@ -1334,7 +1334,7 @@ class ActionsMixin:
         else:
             # Show the panel
             self.main_paned.insert(0, self.bookmarks_panel)
-            self.main_paned.sashpos(0, 200)  # Set initial width
+            self.main_paned.sashpos(0, 360)  # Set initial width
             self.bookmarks_visible = True
             self.bookmarks_toggle_button.config(text="Bookmarks (SHOWN)")
             # Refresh the panel listbox
