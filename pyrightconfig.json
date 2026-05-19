@@ -1,0 +1,12 @@
+{
+    "typeCheckingMode": "basic",
+    "exclude": [
+        "**/__pycache__",
+        "build",
+        "dist",
+        "release"
+    ],
+    "reportAttributeAccessIssue": "none",
+    "reportArgumentType": "none",
+    "reportCallIssue": "none"
+}

@@ -310,7 +310,7 @@ class ActionsMixin:
             return
 
         is_dir = node.is_dir
-        category = self.get_file_category(node.name) if not is_dir else None
+        category = self.get_file_category(node.name) if not is_dir else "other"
         title = "Folder Color" if is_dir else f"{category.capitalize()} File Color"
         setting_key = "dir_color" if is_dir else category
         current_color = (
@@ -521,7 +521,7 @@ class ActionsMixin:
                     continue
 
             svg_lines = []
-            svg_lines.append(f'<svg xmlns="http://www.w3.org/2000/svg" version="1.1"')
+            svg_lines.append('<svg xmlns="http://www.w3.org/2000/svg" version="1.1"')
             svg_lines.append(f'      width="{width}" height="{height}"')
             svg_lines.append(f'      viewBox="0 0 {width} {height}">')
             svg_lines.append('')
@@ -585,10 +585,11 @@ class ActionsMixin:
         """Dialog for customizing colors."""
         colors_win = tk.Toplevel(self)
         colors_win.title("Color Settings")
-        width, height = 620, 640
+        width, height = 300, 640
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         colors_win.geometry(f"{width}x{height}+{x}+{y}")
+        colors_win.minsize(300, 420)
         colors_win.transient(self)
         colors_win.grab_set()
 
@@ -604,6 +605,9 @@ class ActionsMixin:
         canvas_bg = self.setting_color("dark_window_bg", "#0f0f0f") if self.dark_mode else self.setting_color("light_window_bg", "#f0f0f0")
         canvas = tk.Canvas(body_frame, bg=canvas_bg, highlightthickness=0)
         scrollbar = ttk.Scrollbar(body_frame, orient="vertical", command=canvas.yview)
+        body_frame.columnconfigure(0, weight=1)
+        body_frame.columnconfigure(1, weight=0)
+        body_frame.rowconfigure(0, weight=1)
         content = ttk.Frame(canvas)
         content.bind(
             "<Configure>",
@@ -615,17 +619,19 @@ class ActionsMixin:
             lambda event: canvas.itemconfigure(content_window, width=event.width)
         )
         canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
 
         color_vars = {}
 
         def add_color(parent, key, label):
             row = ttk.Frame(parent)
             row.pack(fill="x", pady=3)
-            ttk.Label(row, text=label, width=34).pack(side="left")
+            row.columnconfigure(0, weight=1)
+            row.columnconfigure(1, weight=0)
+            ttk.Label(row, text=label).grid(row=0, column=0, sticky="w", padx=(0, 8))
             var = tk.StringVar(value=self.settings.get(key, ""))
-            ttk.Entry(row, textvariable=var).pack(side="left", fill="x", expand=True)
+            ttk.Entry(row, textvariable=var, width=12).grid(row=0, column=1, sticky="e")
             color_vars[key] = var
 
         sections = [
@@ -1111,7 +1117,7 @@ class ActionsMixin:
                     min_bytes = self.parse_size(filters['min_size']) if filters['min_size'] else 0
                     max_bytes = self.parse_size(filters['max_size']) if filters['max_size'] else float('inf')
                     size_match = min_bytes <= node.size <= max_bytes
-                except:
+                except (TypeError, ValueError):
                     size_match = True  # Invalid size specification
 
             # Date filter
@@ -1124,7 +1130,7 @@ class ActionsMixin:
                         date_match = age_days <= days
                     else:
                         date_match = False
-                except:
+                except (TypeError, ValueError):
                     date_match = True
 
             # Type filter

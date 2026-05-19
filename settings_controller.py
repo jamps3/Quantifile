@@ -217,7 +217,6 @@ class SettingsMixin:
     def apply_theme(self):
         ui_font = (self.settings.get("ui_font_family", "Segoe UI"), self.get_setting_int("ui_font_size", 9, 6, 24))
 
-        theme_name = "dark" if self.dark_mode else "light"
         base_colors = DARK_THEME if self.dark_mode else LIGHT_THEME
         prefix = "dark" if self.dark_mode else "light"
         colors = {
@@ -308,7 +307,8 @@ class SettingsMixin:
                 widget.configure(background=colors["entry"], foreground=colors["entry_text"],
                                  selectbackground=colors["select"], selectforeground=colors["select_text"])
             elif isinstance(widget, tk.Text):
-                widget.configure(background=colors["surface"], foreground=colors["text"], insertbackground=colors["text"])
+                if widget is not getattr(self, "log_text", None):
+                    widget.configure(background=colors["surface"], foreground=colors["text"], insertbackground=colors["text"])
         except Exception:
             pass
 

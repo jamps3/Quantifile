@@ -9,7 +9,7 @@ class Node:
         self.size = 0
         self.children = []
         self.access_denied = False
-        self.modified_time = 0
+        self.modified_time = 0.0
 
 
 def human_size(size):
