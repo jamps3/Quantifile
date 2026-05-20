@@ -21,15 +21,15 @@ A disk space visualization tool inspired by the classic SpaceMonger application.
   - Delete files/folders with confirmation
 - **Free Space Visualization**: Toggle to show available drive space as a visual block
 - **Export**: Export current treemap as SVG with proper fonts and positioning
-- **Bookmarks**: Save favorite directories for instant access, with cached scan data for quick browsing and optional side panel view
+- **Bookmarks**: Save favorite directories for instant access, with cached scan data, tab view, and a wider optional side panel
 - **Advanced Search & Filtering**: Multi-criteria search with file types, size ranges, date filters, regex support, and AND/OR logic
 - **Settings Persistence**: Remembers window position, fullscreen state, colors, fonts, and scan behavior
-- **Color Customization**: Customize colors for directories, files, selection, outlines, and labels with immediate application
+- **Color Customization**: Customize treemap, recent-modified indicator, link, log, and light/dark theme colors with immediate application
 - **Font Customization**: Configure UI font size, heading size, and treemap label font sizing
 - **Animation Options**: Choose no animation, zoom animation, or collapse animation for treemap navigation
 - **Log Tab**: Scan warnings, permission errors, and operation results are recorded without disruptive popups
 - **Access-Denied Placeholders**: Inaccessible folders stay visible with a metadata-size or tiny placeholder block
-- **Visual indicators for recently modified or accessed files**: Files modified in the last hour get a strong badge; recent files get a subtler marker
+- **Visual indicators for recently modified files**: Files modified in the last hour get a strong badge; recent files get a subtler marker, with optional subtle outlines
 - **Dynamic UI**: Status text truncates based on window width, dialogs center properly
 - **Rescan**: Re-scan directories to reflect changes
 - **Cross-Platform**: Works on Windows, macOS, and Linux
@@ -110,7 +110,7 @@ python main.py
     - Advanced search with multi-criteria filtering (name, type, size, date, regex)
     - Scan warnings and operation results appear in the Log tab
     - Inaccessible folders are logged, counted in the scan summary, and shown as access-denied placeholders
-    - Recently modified files are outlined/marked visually, with last-hour files emphasized
+    - Recently modified files are marked visually, with last-hour files emphasized; settings can switch between marker-only and subtle-outline modes
     - Bookmarks side panel can be toggled for simultaneous viewing of favorites
     - Backspace navigates to the parent directory
     - Hovering shows the cursor as a hand and displays path/size info
@@ -147,6 +147,24 @@ Settings persistence, theme/font application, window geometry, and the tabbed Se
 
 #### `actions_controller.py`
 Dialogs and user actions, including file operations, context menu, color settings, free-space display, SVG export, and About.
+
+## Development
+
+### VS Code
+
+The workspace includes a `.vscode/launch.json` configuration for running `main.py` with F5. It sets the program and working directory to the workspace root so relative files like `settings.json` and `icon-1024.png` resolve correctly.
+
+### Checks
+
+Run these checks before committing code changes:
+
+```bash
+python -m compileall -q .
+python -m ruff check .
+python -m pyright
+```
+
+Ruff and Pyright are development tools, not runtime dependencies. `pyrightconfig.json` is configured for this dynamic Tkinter/mixin codebase so editor diagnostics focus on actionable issues instead of mixin attribute false positives.
 
 ### Data Model
 
@@ -211,7 +229,7 @@ Scanning is performed in a background thread to keep the UI responsive. The `aft
 ## Limitations
 
 - The treemap algorithm is a compact custom squarified-style implementation, not a full textbook squarify implementation
-- No persistent history/bookmarks
+- Bookmarks store paths and cached scan data only for the current session; bookmarked folders are rescanned when restored from settings
 - Progress bar shows item count but may not accurately reflect actual scan progress on some systems
 
 ## Future Enhancements

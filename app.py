@@ -159,7 +159,7 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         ttk.Button(toolbar, text="Delete Selected", command=self.delete_selected).pack(side="left", padx=4, pady=4)
         self.free_space_button = ttk.Button(toolbar, text="Free Space (OFF)", command=self.toggle_free_space)
         self.free_space_button.pack(side="left", padx=4, pady=4)
-        ttk.Button(toolbar, text="Export SVG", command=self.export_svg).pack(side="left", padx=4, pady=4)
+        ttk.Button(toolbar, text="Export", command=self.export_svg).pack(side="left", padx=4, pady=4)
         self.bookmarks_toggle_button = ttk.Button(toolbar, text="Bookmarks (HIDDEN)", command=self.toggle_bookmarks_panel)
         self.bookmarks_toggle_button.pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Settings", command=self.show_settings).pack(side="right", padx=4, pady=4)

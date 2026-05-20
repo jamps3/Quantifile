@@ -23,7 +23,7 @@ class ActionsMixin:
     def show_about(self):
         about_win = tk.Toplevel(self)
         about_win.title("About Quantifile")
-        about_win.geometry("400x300")
+        about_win.geometry("400x600")
         about_win.resizable(False, False)
         about_win.transient(self)
         about_win.grab_set()
@@ -499,12 +499,15 @@ class ActionsMixin:
             return
 
         filename = filedialog.asksaveasfilename(
-            title="Save treemap as SVG",
+            title="Save treemap as SVG or PNG",
             defaultextension=".svg",
-            filetypes=[("SVG files", "*.svg"), ("All files", "*.*")]
+            filetypes=[("SVG files", "*.svg"), ("PNG files", "*.png"), ("All files", "*.*")]
         )
         if not filename:
             return
+        if filename.lower().endswith(".png"):
+            self.log_message("PNG export requires Pillow (not included). Saved as SVG instead or install pillow.", "INFO", show_log=True)
+            filename = filename[:-4] + ".svg"
 
         try:
             width = self.canvas.winfo_width()
@@ -1334,7 +1337,7 @@ class ActionsMixin:
         else:
             # Show the panel
             self.main_paned.insert(0, self.bookmarks_panel)
-            self.main_paned.sashpos(0, 360)  # Set initial width
+            self.main_paned.sashpos(0, 380)  # Set initial width
             self.bookmarks_visible = True
             self.bookmarks_toggle_button.config(text="Bookmarks (SHOWN)")
             # Refresh the panel listbox

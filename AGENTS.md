@@ -44,6 +44,15 @@ python main.py
 # - Try open/delete operations
 ```
 
+Static checks used for this project:
+```bash
+python -m compileall -q .
+python -m ruff check .
+python -m pyright
+```
+
+`pyrightconfig.json` intentionally relaxes dynamic mixin attribute diagnostics because the controller mixins are composed into the Tkinter `Quantifile` class at runtime.
+
 ## Kilo Tool Usage Guidelines
 
 ### When to Use Which Tool
@@ -110,6 +119,7 @@ Common interesting patterns to grep:
 ### Key Behaviors
 - **Modular project**: `main.py` launches the app; behavior is split across focused modules
 - **No external dependencies**: Uses only Python stdlib
+- **Dev-only tools**: Ruff and Pyright are used for lint/type checks, but are not runtime dependencies
 - **GUI application**: Requires manual testing
 - **Threading present**: Background scanning pattern
 - **Recursive algorithms**: `scanner.scan_path()` and `layout.treemap()`

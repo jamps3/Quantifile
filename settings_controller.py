@@ -304,6 +304,8 @@ class SettingsMixin:
                 widget.configure(background=colors["surface"])
             elif isinstance(widget, tk.Entry):
                 widget.configure(background=colors["entry"], foreground=colors["entry_text"], insertbackground=colors["entry_text"])
+            elif wclass == "TEntry":
+                widget.configure(fieldbackground=colors["entry"], foreground=colors["entry_text"], insertcolor=colors["entry_text"])
             elif isinstance(widget, tk.Listbox):
                 widget.configure(background=colors["entry"], foreground=colors["entry_text"],
                                  selectbackground=colors["select"], selectforeground=colors["select_text"])
