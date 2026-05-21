@@ -2,7 +2,7 @@
 
 A disk space visualization tool inspired by the classic SpaceMonger application. This tool provides an interactive treemap visualization of directory contents, making it easy to identify large files and folders at a glance.
 
-![Screenshot](screenshot.png)
+![Screenshot](../screenshot.png)
 
 ## Features
 

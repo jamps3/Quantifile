@@ -1,4 +1,4 @@
-# Quantifile v1.0
+# Quantifile v1.0.5
 
 A disk space visualization tool inspired by the classic SpaceMonger application. This tool provides an interactive treemap visualization of directory contents, making it easy to identify large files and folders at a glance.
 
@@ -53,7 +53,7 @@ No installation required — the application uses only Python standard library m
 
 A standalone Windows executable is available that doesn't require Python installation:
 
-- Download `Quantifile-v1.0-Windows.zip`
+- Download `Quantifile-v1.0.5-Windows.zip`
 - Extract the ZIP file
 - Run `Quantifile.exe` directly
 - Optional: Run `install.bat` for system-wide installation with desktop shortcut
