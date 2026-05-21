@@ -154,6 +154,11 @@ def main() -> None:
     shutil.copy2(ROOT / "README.md", readme_dest)
     update_file_version(readme_dest, new_ver)
 
+    # Copy screenshot.png so the image in the bundled README works when extracted
+    screenshot = ROOT / "screenshot.png"
+    if screenshot.exists():
+        shutil.copy2(screenshot, RELEASE_DIR / "screenshot.png")
+
     # install.bat lives in release/ (source of truth for the template)
     install_bat = RELEASE_DIR / "install.bat"
     if install_bat.exists():

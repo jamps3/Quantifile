@@ -493,7 +493,7 @@ class ActionsMixin:
             self.log_message(f"Could not get free space: {e}", "ERROR", show_log=True)
 
     def export_svg(self):
-        """Export current treemap as an SVG file."""
+        """Export current treemap as SVG or PNG (PNG requires Pillow)."""
         if not self.current_node:
             self.log_message("No data to export.", "INFO", show_log=True)
             return
@@ -505,9 +505,16 @@ class ActionsMixin:
         )
         if not filename:
             return
-        if filename.lower().endswith(".png"):
-            self.log_message("PNG export requires Pillow (not included). Saved as SVG instead or install pillow.", "INFO", show_log=True)
-            filename = filename[:-4] + ".svg"
+
+        want_png = filename.lower().endswith(".png")
+        use_png = False
+        if want_png:
+            try:
+                from PIL import Image, ImageDraw, ImageFont
+                use_png = True
+            except ImportError:
+                self.log_message("PNG export requires Pillow (pip install pillow). Falling back to SVG.", "INFO", show_log=True)
+                filename = filename[:-4] + ".svg"
 
         try:
             width = self.canvas.winfo_width()
@@ -523,6 +530,75 @@ class ActionsMixin:
                 except tk.TclError:
                     continue
 
+            if use_png:
+                # PNG export using Pillow
+                from PIL import Image, ImageDraw, ImageFont
+
+                # Get canvas background color
+                bg = self.canvas.cget("bg") or "#f0f0f0"
+                def hex_to_rgb(c):
+                    if c and c.startswith("#") and len(c) >= 7:
+                        try:
+                            return (int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16))
+                        except ValueError:
+                            pass
+                    return (240, 240, 240)
+
+                bg_color = hex_to_rgb(bg)
+                img = Image.new("RGB", (width, height), bg_color)
+                draw = ImageDraw.Draw(img)
+
+                def color_to_rgb(c):
+                    if not c:
+                        return None
+                    if c.startswith("#") and len(c) >= 7:
+                        try:
+                            return (int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16))
+                        except ValueError:
+                            return None
+                    return None
+
+                # Draw rectangles
+                for item in items:
+                    try:
+                        if self.canvas.type(item) == "rectangle":
+                            x1, y1, x2, y2 = self.canvas.bbox(item)
+                            fill = self.canvas.itemcget(item, "fill")
+                            outline = self.canvas.itemcget(item, "outline")
+                            fill_rgb = color_to_rgb(fill)
+                            outline_rgb = color_to_rgb(outline)
+                            if fill_rgb:
+                                draw.rectangle([x1, y1, x2, y2], fill=fill_rgb)
+                            if outline_rgb:
+                                draw.rectangle([x1, y1, x2, y2], outline=outline_rgb, width=1)
+                    except tk.TclError:
+                        pass
+
+                # Draw text (top-left origin matches Tkinter anchor="nw")
+                try:
+                    font = ImageFont.load_default()
+                except Exception:
+                    font = None
+
+                for item in items:
+                    try:
+                        if self.canvas.type(item) == "text":
+                            x, y = self.canvas.coords(item)
+                            text = self.canvas.itemcget(item, "text")
+                            fill = self.canvas.itemcget(item, "fill")
+                            fill_rgb = color_to_rgb(fill) or (0, 0, 0)
+                            if font:
+                                draw.text((x, y), text, fill=fill_rgb, font=font)
+                            else:
+                                draw.text((x, y), text, fill=fill_rgb)
+                    except (tk.TclError, ValueError):
+                        pass
+
+                img.save(filename, "PNG")
+                self.log_message(f"Treemap exported successfully to: {filename}", "INFO", show_log=True)
+                return
+
+            # === SVG path (original) ===
             svg_lines = []
             svg_lines.append('<svg xmlns="http://www.w3.org/2000/svg" version="1.1"')
             svg_lines.append(f'      width="{width}" height="{height}"')
@@ -567,7 +643,7 @@ class ActionsMixin:
                             size = int(size_str)
                         except ValueError:
                             size = 8
-                        # Use dominant-baseline="hanging" to match Tkinter's anchor="nw" (top-left alignment)
+                        # Use dominant-baseline="hanging" to match Tkinter's anchor="nw"
                         svg_lines.append(f'  <text x="{x}" y="{y}" dominant-baseline="hanging"')
                         if family:
                             svg_lines.append(f'        font-family="{family}"')
@@ -581,8 +657,9 @@ class ActionsMixin:
                 f.write('\n'.join(svg_lines))
 
             self.log_message(f"Treemap exported successfully to: {filename}", "INFO", show_log=True)
+
         except Exception as e:
-            self.log_message(f"Export SVG failed: {e}", "ERROR", show_log=True)
+            self.log_message(f"Export failed: {e}", "ERROR", show_log=True)
 
     def show_color_settings(self):
         """Dialog for customizing colors."""
