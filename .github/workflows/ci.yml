@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install development tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pytest-cov ruff pyright
+
+      - name: Compile
+        run: python -m compileall -q .
+
+      - name: Autoformat
+        run: python -m ruff format --check .
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Type check
+        run: python -m pyright
+
+      - name: Count tests
+        id: collect
+        run: |
+          count=$(python -m pytest --collect-only -q -p no:cov | sed -n 's/^\([0-9][0-9]*\) tests collected.*$/\1/p')
+          echo "count=${count:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: Test with coverage
+        run: python -m pytest
+
+      - name: Generate Shields endpoints
+        run: python scripts/write_badges.py --test-count "${{ steps.collect.outputs.count }}"
+
+      - name: Upload badge endpoints
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: badges
+          publish_dir: badges
+          destination_dir: badges
+          keep_files: false

@@ -42,7 +42,10 @@ def system_prefers_dark_theme():
         return None  # not available
     try:
         import winreg
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize") as key:
+
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+        ) as key:
             value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
             return value == 0
     except Exception:
@@ -54,6 +57,7 @@ def set_windows_dark_title_bar(window, enabled: bool) -> None:
         return
     try:
         import ctypes
+
         window.update_idletasks()
         hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
         value = ctypes.c_int(1 if enabled else 0)
@@ -134,20 +138,20 @@ class SettingsMixin:
             "canvas_font_family": "Segoe UI",
             "canvas_label_min_size": 5,
             "canvas_label_max_size": 8,
-             "file_type_colors": {
-                 "image": "#ff6600",
-                 "video": "#cc0000",
-                 "audio": "#00cc00",
-                 "document": "#0066ff",
-                 "archive": "#cccc00",
-                 "executable": "#cc00cc",
-                 "code": "#00cccc",
-                 "text": "#aaaaaa",
-                 "other": ""
-             },
+            "file_type_colors": {
+                "image": "#ff6600",
+                "video": "#cc0000",
+                "audio": "#00cc00",
+                "document": "#0066ff",
+                "archive": "#cccc00",
+                "executable": "#cc00cc",
+                "code": "#00cccc",
+                "text": "#aaaaaa",
+                "other": "",
+            },
             "log_bg": "",
             "log_fg": "",
-            "treemap_overlay_opacity": 0
+            "treemap_overlay_opacity": 0,
         }
         for key, value in defaults.items():
             if key not in self.settings:
@@ -184,7 +188,7 @@ class SettingsMixin:
                     return
                 except tk.TclError:
                     pass  # Invalid geometry, use default
-        
+
         # Fallback to default centered geometry
         self.geometry("1100x750")
         self.center_window()
@@ -250,16 +254,13 @@ class SettingsMixin:
         self.style.map("TButton", background=[("active", colors["button_active"])])
         self.style.configure("TLabel", background=colors["window"], foreground=colors["text"])
         self.style.configure(
-            "TEntry",
-            fieldbackground=colors["entry"],
-            foreground=colors["entry_text"],
-            insertcolor=colors["entry_text"]
+            "TEntry", fieldbackground=colors["entry"], foreground=colors["entry_text"], insertcolor=colors["entry_text"]
         )
         self.style.configure("TCombobox", fieldbackground=colors["entry"], foreground=colors["entry_text"])
         self.style.configure("TRadiobutton", background=colors["window"], foreground=colors["text"])
-        self.style.map("TRadiobutton",
-                       background=[("active", colors["surface_alt"])],
-                       foreground=[("active", colors["text"])])
+        self.style.map(
+            "TRadiobutton", background=[("active", colors["surface_alt"])], foreground=[("active", colors["text"])]
+        )
         self.style.configure("TCheckbutton", background=colors["window"], foreground=colors["text"])
 
         # Canvas
@@ -303,15 +304,25 @@ class SettingsMixin:
             elif isinstance(widget, tk.Canvas):
                 widget.configure(background=colors["surface"])
             elif isinstance(widget, tk.Entry):
-                widget.configure(background=colors["entry"], foreground=colors["entry_text"], insertbackground=colors["entry_text"])
+                widget.configure(
+                    background=colors["entry"], foreground=colors["entry_text"], insertbackground=colors["entry_text"]
+                )
             elif wclass == "TEntry":
-                widget.configure(fieldbackground=colors["entry"], foreground=colors["entry_text"], insertcolor=colors["entry_text"])
+                widget.configure(
+                    fieldbackground=colors["entry"], foreground=colors["entry_text"], insertcolor=colors["entry_text"]
+                )
             elif isinstance(widget, tk.Listbox):
-                widget.configure(background=colors["entry"], foreground=colors["entry_text"],
-                                 selectbackground=colors["select"], selectforeground=colors["select_text"])
+                widget.configure(
+                    background=colors["entry"],
+                    foreground=colors["entry_text"],
+                    selectbackground=colors["select"],
+                    selectforeground=colors["select_text"],
+                )
             elif isinstance(widget, tk.Text):
                 if widget is not getattr(self, "log_text", None):
-                    widget.configure(background=colors["surface"], foreground=colors["text"], insertbackground=colors["text"])
+                    widget.configure(
+                        background=colors["surface"], foreground=colors["text"], insertbackground=colors["text"]
+                    )
         except Exception:
             pass
 
@@ -382,17 +393,38 @@ class SettingsMixin:
         current_mode = self.settings.get("theme_mode", "system")
         self.theme_var = tk.StringVar(value=current_mode)
 
-        ttk.Radiobutton(theme_frame, text="System default", variable=self.theme_var, value="system",
-                        command=lambda: self.on_theme_change("system")).pack(side="left", padx=(10, 15))
-        ttk.Radiobutton(theme_frame, text="Light", variable=self.theme_var, value="light",
-                        command=lambda: self.on_theme_change("light")).pack(side="left", padx=(0, 15))
-        ttk.Radiobutton(theme_frame, text="Dark", variable=self.theme_var, value="dark",
-                        command=lambda: self.on_theme_change("dark")).pack(side="left", padx=(0, 15))
+        ttk.Radiobutton(
+            theme_frame,
+            text="System default",
+            variable=self.theme_var,
+            value="system",
+            command=lambda: self.on_theme_change("system"),
+        ).pack(side="left", padx=(10, 15))
+        ttk.Radiobutton(
+            theme_frame,
+            text="Light",
+            variable=self.theme_var,
+            value="light",
+            command=lambda: self.on_theme_change("light"),
+        ).pack(side="left", padx=(0, 15))
+        ttk.Radiobutton(
+            theme_frame,
+            text="Dark",
+            variable=self.theme_var,
+            value="dark",
+            command=lambda: self.on_theme_change("dark"),
+        ).pack(side="left", padx=(0, 15))
 
         ttk.Label(appearance_tab, text="Colors", style="Heading.TLabel").pack(anchor="w", pady=(8, 10))
-        ttk.Button(appearance_tab, text="General Colors...", command=self.show_color_settings).pack(anchor="w", pady=(0, 8))
-        ttk.Button(appearance_tab, text="File Type Colors...", command=self.show_file_type_colors).pack(anchor="w", pady=(0, 8))
-        ttk.Button(appearance_tab, text="Log Colors...", command=self.show_log_color_settings).pack(anchor="w", pady=(0, 16))
+        ttk.Button(appearance_tab, text="General Colors...", command=self.show_color_settings).pack(
+            anchor="w", pady=(0, 8)
+        )
+        ttk.Button(appearance_tab, text="File Type Colors...", command=self.show_file_type_colors).pack(
+            anchor="w", pady=(0, 8)
+        )
+        ttk.Button(appearance_tab, text="Log Colors...", command=self.show_log_color_settings).pack(
+            anchor="w", pady=(0, 16)
+        )
         overlay_frame = ttk.Frame(appearance_tab)
         overlay_frame.pack(fill="x", pady=(0, 16))
         ttk.Label(overlay_frame, text="Treemap dark overlay opacity (0-100):", width=32).pack(side="left")
@@ -401,16 +433,18 @@ class SettingsMixin:
 
         ttk.Label(fonts_tab, text="Interface Font", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
 
-        font_family_values = sorted({
-            "Segoe UI",
-            "Arial",
-            "Calibri",
-            "Consolas",
-            "Tahoma",
-            "Verdana",
-            self.settings.get("ui_font_family", "Segoe UI"),
-            self.settings.get("canvas_font_family", "Segoe UI")
-        })
+        font_family_values = sorted(
+            {
+                "Segoe UI",
+                "Arial",
+                "Calibri",
+                "Consolas",
+                "Tahoma",
+                "Verdana",
+                self.settings.get("ui_font_family", "Segoe UI"),
+                self.settings.get("canvas_font_family", "Segoe UI"),
+            }
+        )
 
         def add_labeled_spinbox(parent, label, variable, from_, to_, width=6):
             row = ttk.Frame(parent)
@@ -422,12 +456,9 @@ class SettingsMixin:
         ui_family_frame.pack(fill="x", pady=3)
         ttk.Label(ui_family_frame, text="UI font family", width=24).pack(side="left")
         self.ui_font_family_var = tk.StringVar(value=self.settings.get("ui_font_family", "Segoe UI"))
-        ttk.Combobox(
-            ui_family_frame,
-            textvariable=self.ui_font_family_var,
-            values=font_family_values,
-            width=20
-        ).pack(side="left")
+        ttk.Combobox(ui_family_frame, textvariable=self.ui_font_family_var, values=font_family_values, width=20).pack(
+            side="left"
+        )
 
         self.ui_font_size_var = tk.IntVar(value=self.get_setting_int("ui_font_size", 9, 6, 24))
         add_labeled_spinbox(fonts_tab, "UI font size", self.ui_font_size_var, 6, 24)
@@ -443,10 +474,7 @@ class SettingsMixin:
         ttk.Label(canvas_family_frame, text="Label font family", width=24).pack(side="left")
         self.canvas_font_family_var = tk.StringVar(value=self.settings.get("canvas_font_family", "Segoe UI"))
         ttk.Combobox(
-            canvas_family_frame,
-            textvariable=self.canvas_font_family_var,
-            values=font_family_values,
-            width=20
+            canvas_family_frame, textvariable=self.canvas_font_family_var, values=font_family_values, width=20
         ).pack(side="left")
 
         self.canvas_label_min_size_var = tk.IntVar(value=self.get_setting_int("canvas_label_min_size", 5, 4, 18))
@@ -458,13 +486,19 @@ class SettingsMixin:
         ttk.Label(behavior_tab, text="Actions", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
 
         self.density_var = tk.IntVar(value=self.settings.get("min_density", 1))
-        ttk.Checkbutton(behavior_tab, text="Hide small files (density filter)", variable=self.density_var).pack(anchor="w", pady=2)
+        ttk.Checkbutton(behavior_tab, text="Hide small files (density filter)", variable=self.density_var).pack(
+            anchor="w", pady=2
+        )
 
         self.disable_delete_var = tk.BooleanVar(value=self.settings.get("disable_delete", False))
-        ttk.Checkbutton(behavior_tab, text="Disable delete command", variable=self.disable_delete_var).pack(anchor="w", pady=2)
+        ttk.Checkbutton(behavior_tab, text="Disable delete command", variable=self.disable_delete_var).pack(
+            anchor="w", pady=2
+        )
 
         self.remember_pos_var = tk.BooleanVar(value=self.settings.get("remember_window_pos", True))
-        ttk.Checkbutton(behavior_tab, text="Remember window position", variable=self.remember_pos_var).pack(anchor="w", pady=2)
+        ttk.Checkbutton(behavior_tab, text="Remember window position", variable=self.remember_pos_var).pack(
+            anchor="w", pady=2
+        )
 
         ttk.Separator(behavior_tab, orient="horizontal").pack(fill="x", pady=12)
         ttk.Label(behavior_tab, text="Animation", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
@@ -481,7 +515,7 @@ class SettingsMixin:
             textvariable=self.animation_mode_var,
             values=["none", "zoom", "collapse"],
             width=14,
-            state="readonly"
+            state="readonly",
         ).pack(side="left")
 
         self.animation_duration_var = tk.IntVar(value=self.get_setting_int("animation_duration", 160, 50, 1000))
@@ -491,12 +525,16 @@ class SettingsMixin:
         add_labeled_spinbox(behavior_tab, "Steps", self.animation_steps_var, 3, 40)
 
         self.auto_rescan_var = tk.BooleanVar(value=self.settings.get("auto_rescan_on_delete", True))
-        ttk.Checkbutton(behavior_tab, text="Auto rescan after delete", variable=self.auto_rescan_var).pack(anchor="w", pady=2)
+        ttk.Checkbutton(behavior_tab, text="Auto rescan after delete", variable=self.auto_rescan_var).pack(
+            anchor="w", pady=2
+        )
 
         ttk.Label(scan_tab, text="Scan Progress", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
 
         self.show_scan_progress_var = tk.BooleanVar(value=self.settings.get("show_scan_progress", True))
-        ttk.Checkbutton(scan_tab, text="Show scan progress details", variable=self.show_scan_progress_var).pack(anchor="w", pady=2)
+        ttk.Checkbutton(scan_tab, text="Show scan progress details", variable=self.show_scan_progress_var).pack(
+            anchor="w", pady=2
+        )
 
         ttk.Label(scan_tab, text="Maximum scan threads:").pack(anchor="w", pady=(12, 2))
         self.max_threads_var = tk.IntVar(value=self.get_setting_int("max_scan_threads", 6, 1, 32))
@@ -507,9 +545,7 @@ class SettingsMixin:
 
         self.show_recent_modified_var = tk.BooleanVar(value=self.settings.get("show_recent_modified", True))
         ttk.Checkbutton(
-            scan_tab,
-            text="Show recently modified indicators",
-            variable=self.show_recent_modified_var
+            scan_tab, text="Show recently modified indicators", variable=self.show_recent_modified_var
         ).pack(anchor="w", pady=2)
 
         self.recent_modified_outline_style_var = tk.StringVar(
@@ -523,12 +559,14 @@ class SettingsMixin:
             textvariable=self.recent_modified_outline_style_var,
             values=["indicator_only", "subtle_outline"],
             width=16,
-            state="readonly"
+            state="readonly",
         ).pack(side="left")
 
         ttk.Label(scan_tab, text="Recent window (days):").pack(anchor="w", pady=(12, 2))
         self.recent_modified_days_var = tk.IntVar(value=self.get_setting_int("recent_modified_days", 7, 1, 365))
-        ttk.Spinbox(scan_tab, from_=1, to=365, textvariable=self.recent_modified_days_var, width=5).pack(anchor="w", pady=(0, 10))
+        ttk.Spinbox(scan_tab, from_=1, to=365, textvariable=self.recent_modified_days_var, width=5).pack(
+            anchor="w", pady=(0, 10)
+        )
 
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill="x", pady=(12, 0))

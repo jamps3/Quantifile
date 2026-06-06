@@ -1,5 +1,10 @@
 # Quantifile v1.0.5
 
+[![Tests](https://img.shields.io/github/actions/workflow/status/jamps3/Quantifile/ci.yml?branch=main&label=tests)](https://github.com/jamps3/Quantifile/actions/workflows/ci.yml)
+[![Autoformat](https://img.shields.io/github/actions/workflow/status/jamps3/Quantifile/ci.yml?branch=main&label=autoformat)](https://github.com/jamps3/Quantifile/actions/workflows/ci.yml)
+[![Test count](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/badges/badges/tests.json)](https://github.com/jamps3/Quantifile/tree/badges)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/badges/badges/coverage.json)](https://github.com/jamps3/Quantifile/tree/badges)
+
 A disk space visualization tool inspired by the classic SpaceMonger application. This tool provides an interactive treemap visualization of directory contents, making it easy to identify large files and folders at a glance.
 
 ![Screenshot](screenshot.png)
@@ -160,7 +165,9 @@ Run these checks before committing code changes:
 
 ```bash
 python -m compileall -q .
+python -m pytest
 python -m ruff check .
+python -m ruff format --check .
 python -m pyright
 ```
 

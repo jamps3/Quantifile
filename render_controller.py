@@ -35,16 +35,16 @@ class RenderMixin:
             return 0
         size_str = size_str.strip().upper()
         units = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
-        
+
         # Try format: number + unit (e.g., "5MB", "1GB")
         for unit, multiplier in units.items():
             if size_str.endswith(unit.upper()):
                 try:
-                    num = float(size_str[:-len(unit)])
+                    num = float(size_str[: -len(unit)])
                     return int(num * multiplier)
                 except ValueError:
                     continue
-        
+
         # Try plain number (assume bytes)
         try:
             return int(float(size_str))
@@ -55,35 +55,39 @@ class RenderMixin:
         """Filter nodes based on search criteria."""
         search_text = self.search_var.get().strip()
         self.current_search = search_text
-        
+
         if not search_text:
             self.clear_search()
             return
 
         self.search_active = True
         search_type = self.search_type_var.get()
-        
+
         # Build matches set
         self.search_matches.clear()
-        
+
         if self.current_node:
             if search_type == "name":
                 self._collect_name_matches(self.current_node, search_text.lower())
             elif search_type == "size":
                 min_bytes = self.parse_size(self.min_size_var.get())
                 self._collect_size_matches(self.current_node, min_bytes)
-        
+
         # Redraw to highlight matches
         self.draw()
-        
+
         # Update status
         match_count = len(self.search_matches)
         if match_count > 0:
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-            self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)} | {match_count} matches")
+            self.status.config(
+                text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)} | {match_count} matches"
+            )
         else:
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-            self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)} | No matches")
+            self.status.config(
+                text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)} | No matches"
+            )
 
     def _collect_name_matches(self, node, search_lower):
         """Recursively collect nodes whose name contains the search text."""
@@ -108,7 +112,9 @@ class RenderMixin:
         self.draw()
         if self.current_node:
             scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-            self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)}")
+            self.status.config(
+                text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)}"
+            )
 
     def draw(self):
         self.canvas.delete("all")
@@ -127,7 +133,9 @@ class RenderMixin:
         if w < 2 or h < 2:
             return
 
-        color = self.access_denied_color() if getattr(node, "access_denied", False) else self.color_for_node(node, depth)
+        color = (
+            self.access_denied_color() if getattr(node, "access_denied", False) else self.color_for_node(node, depth)
+        )
         if self.search_active and node.path not in self.search_matches:
             color = self.dim_color(color)
         op = self.settings.get("treemap_overlay_opacity", 0)
@@ -153,14 +161,10 @@ class RenderMixin:
         elif recency and self.settings.get("recent_modified_outline_style", "indicator_only") == "subtle_outline":
             if recency == "hour":
                 outline_color = self.setting_color(
-                    "recent_hour_outline_color",
-                    "#2f8f6a" if self.dark_mode else "#5b8f76"
+                    "recent_hour_outline_color", "#2f8f6a" if self.dark_mode else "#5b8f76"
                 )
             else:
-                outline_color = self.setting_color(
-                    "recent_outline_color",
-                    "#4f7f8f" if self.dark_mode else "#6f8fa8"
-                )
+                outline_color = self.setting_color("recent_outline_color", "#4f7f8f" if self.dark_mode else "#6f8fa8")
             outline_width = 1
         else:
             outline_color = self.settings.get("outline_color", "")
@@ -168,12 +172,7 @@ class RenderMixin:
                 outline_color = "#222222" if self.dark_mode else "black"
             outline_width = 1
 
-        rect = self.canvas.create_rectangle(
-            x, y, x + w, y + h,
-            fill=color,
-            outline=outline_color,
-            width=outline_width
-        )
+        rect = self.canvas.create_rectangle(x, y, x + w, y + h, fill=color, outline=outline_color, width=outline_width)
 
         self.rect_nodes[rect] = node
         self.node_rects[rect] = node
@@ -212,14 +211,7 @@ class RenderMixin:
                 label = f"{name_part}\n{human_size(node.size)}"
 
             if font_size >= min_size:
-                self.canvas.create_text(
-                    x + 4,
-                    y + 4,
-                    anchor="nw",
-                    text=label,
-                    fill=label_color,
-                    font=label_font
-                )
+                self.canvas.create_text(x + 4, y + 4, anchor="nw", text=label, fill=label_color, font=label_font)
 
         if node.is_dir and node.children:
             padding = 18 if w > 80 and h > 50 else 2
@@ -276,22 +268,14 @@ class RenderMixin:
             return
 
         if recency == "hour":
-            fill = self.setting_color(
-                "recent_hour_indicator_color",
-                "#00ff99" if self.dark_mode else "#00b36b"
-            )
+            fill = self.setting_color("recent_hour_indicator_color", "#00ff99" if self.dark_mode else "#00b36b")
             text_fill = self.setting_color(
-                "recent_hour_indicator_text_color",
-                "#002b1a" if self.dark_mode else "#ffffff"
+                "recent_hour_indicator_text_color", "#002b1a" if self.dark_mode else "#ffffff"
             )
             size = min(18, max(10, int(min(w, h) * 0.18)))
             x1 = x + w - size - 3
             y1 = y + 3
-            marker = self.canvas.create_rectangle(
-                x1, y1, x1 + size, y1 + size,
-                fill=fill,
-                outline=""
-            )
+            marker = self.canvas.create_rectangle(x1, y1, x1 + size, y1 + size, fill=fill, outline="")
             self.rect_nodes[marker] = node
             if size >= 12:
                 label = self.canvas.create_text(
@@ -300,23 +284,15 @@ class RenderMixin:
                     text="1h",
                     fill=text_fill,
                     font=(self.settings.get("canvas_font_family", "Segoe UI"), max(6, int(size * 0.42))),
-                    anchor="center"
+                    anchor="center",
                 )
                 self.rect_nodes[label] = node
             return
 
         marker_size = min(10, max(5, int(min(w, h) * 0.12)))
-        fill = self.setting_color(
-            "recent_indicator_color",
-            "#66d9ff" if self.dark_mode else "#0078d7"
-        )
+        fill = self.setting_color("recent_indicator_color", "#66d9ff" if self.dark_mode else "#0078d7")
         marker = self.canvas.create_oval(
-            x + w - marker_size - 4,
-            y + 4,
-            x + w - 4,
-            y + marker_size + 4,
-            fill=fill,
-            outline=""
+            x + w - marker_size - 4, y + 4, x + w - 4, y + marker_size + 4, fill=fill, outline=""
         )
         self.rect_nodes[marker] = node
 
@@ -380,22 +356,23 @@ class RenderMixin:
             if i <= 0:
                 self._finish_animation(new_node)
                 return
-            
+
             scale = i / steps
             self.canvas.delete("all")
             self.rect_nodes.clear()
             self.node_rects.clear()
-            
+
             # Draw shrinking old rectangles
-            for (x1, y1, x2, y2, fill, outline, width_val) in old_items:
+            for x1, y1, x2, y2, fill, outline, width_val in old_items:
                 cx = (x1 + x2) / 2
                 cy = (y1 + y2) / 2
                 w = (x2 - x1) * scale
                 h = (y2 - y1) * scale
                 if w > 1 and h > 1:
-                    self.canvas.create_rectangle(cx - w/2, cy - h/2, cx + w/2, cy + h/2,
-                                                fill=fill, outline=outline, width=width_val)
-            
+                    self.canvas.create_rectangle(
+                        cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2, fill=fill, outline=outline, width=width_val
+                    )
+
             self.after(int(duration / steps), lambda: do_animation(i - 1))
 
         do_animation()
@@ -440,12 +417,7 @@ class RenderMixin:
             self.canvas.delete("all")
             self.rect_nodes.clear()
             self.node_rects.clear()
-            rect = self.canvas.create_rectangle(
-                x1, y1, x2, y2,
-                fill=color,
-                outline=outline,
-                width=3
-            )
+            rect = self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline=outline, width=3)
             self.rect_nodes[rect] = node
             self.node_rects[rect] = node
             self.after(max(1, int(duration / steps)), lambda: draw_step(step + 1))
@@ -468,7 +440,9 @@ class RenderMixin:
     def _update_status(self, node):
         scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
         if node.is_dir:
-            self.status.config(text=f"{scan_mode}: {self.truncate_text(node.path)} — {human_size(node.size)} ({len(node.children)} items)")
+            self.status.config(
+                text=f"{scan_mode}: {self.truncate_text(node.path)} — {human_size(node.size)} ({len(node.children)} items)"
+            )
         else:
             self.status.config(text=f"{scan_mode}: {self.truncate_text(node.path)} — {human_size(node.size)}")
 
@@ -582,10 +556,7 @@ class RenderMixin:
             and outer[1] <= inner[1]
             and outer[2] >= inner[2]
             and outer[3] >= inner[3]
-            and (
-                outer[2] - outer[0] > inner[2] - inner[0]
-                or outer[3] - outer[1] > inner[3] - inner[1]
-            )
+            and (outer[2] - outer[0] > inner[2] - inner[0] or outer[3] - outer[1] > inner[3] - inner[1])
         )
 
     def on_double_click(self, event):
@@ -611,7 +582,9 @@ class RenderMixin:
             self.canvas.config(cursor="")
             if self.current_node:
                 scan_mode = "Quick browse" if getattr(self, "scan_type", "full") == "quick" else "Full scan"
-                self.status.config(text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)}")
+                self.status.config(
+                    text=f"{scan_mode}: {self.truncate_text(self.current_node.path)} — {human_size(self.current_node.size)}"
+                )
         return "break"
 
     def _find_node_by_path(self, node, target_path):

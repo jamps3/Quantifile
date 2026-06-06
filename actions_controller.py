@@ -48,18 +48,20 @@ class ActionsMixin:
         title_font = (
             self.settings.get("ui_font_family", "Segoe UI"),
             self.get_setting_int("heading_font_size", 10, 6, 28) + 4,
-            "bold"
+            "bold",
         )
         ttk.Label(main_frame, text="Quantifile", font=title_font).pack()
         ttk.Label(main_frame, text="Disk space visualization tool inspired by SpaceMonger 1.4.0").pack(pady=(0, 5))
-        ttk.Label(main_frame, text="Explore and analyze directory structures with interactive treemaps.").pack(pady=(0, 10))
+        ttk.Label(main_frame, text="Explore and analyze directory structures with interactive treemaps.").pack(
+            pady=(0, 10)
+        )
         ttk.Label(main_frame, text="© 2026 Jan-Erik Labbas. All rights reserved.").pack(pady=(0, 5))
         ttk.Label(main_frame, text="Licensed under MIT License.").pack(pady=(0, 5))
         paypal_label = ttk.Label(
             main_frame,
             text="Support me on PayPal: paypal.me/jamps3",
             cursor="hand2",
-            foreground=self.setting_color("link_color", "#0000ff")
+            foreground=self.setting_color("link_color", "#0000ff"),
         )
         paypal_label.pack(pady=(0, 10))
         paypal_label.bind("<Button-1>", lambda e: self.open_paypal())
@@ -71,6 +73,7 @@ class ActionsMixin:
 
     def open_paypal(self):
         import webbrowser
+
         webbrowser.open("https://paypal.me/jamps3")
 
     def show_properties(self):
@@ -78,18 +81,45 @@ class ActionsMixin:
 
     def get_file_category(self, filename):
         """Return file type category based on extension."""
-        ext = os.path.splitext(filename)[1].lower().lstrip('.')
-        
+        ext = os.path.splitext(filename)[1].lower().lstrip(".")
+
         categories = {
-            'image': {'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'svg', 'ico', 'heic', 'heif'},
-            'video': {'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'mpg', 'mpeg'},
-            'audio': {'mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma', 'opus', 'aiff'},
-            'document': {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'csv', 'odt', 'ods', 'odp'},
-            'archive': {'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso', 'dmg', 'vmdk'},
-            'executable': {'exe', 'msi', 'bat', 'sh', 'app', 'dmg', 'pkg', 'deb', 'rpm', 'apk'},
-            'code': {'py', 'js', 'ts', 'html', 'css', 'c', 'cpp', 'h', 'hpp', 'java', 'go', 'rs', 'rb', 'php', 'sql', 'json', 'xml', 'yaml', 'yml', 'md', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'perl'}
+            "image": {"jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp", "svg", "ico", "heic", "heif"},
+            "video": {"mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg"},
+            "audio": {"mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "opus", "aiff"},
+            "document": {"pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "csv", "odt", "ods", "odp"},
+            "archive": {"zip", "rar", "7z", "tar", "gz", "bz2", "xz", "iso", "dmg", "vmdk"},
+            "executable": {"exe", "msi", "bat", "sh", "app", "dmg", "pkg", "deb", "rpm", "apk"},
+            "code": {
+                "py",
+                "js",
+                "ts",
+                "html",
+                "css",
+                "c",
+                "cpp",
+                "h",
+                "hpp",
+                "java",
+                "go",
+                "rs",
+                "rb",
+                "php",
+                "sql",
+                "json",
+                "xml",
+                "yaml",
+                "yml",
+                "md",
+                "sh",
+                "bash",
+                "zsh",
+                "ps1",
+                "lua",
+                "perl",
+            },
         }
-        
+
         for category, extensions in categories.items():
             if ext in extensions:
                 return category
@@ -122,10 +152,7 @@ class ActionsMixin:
     def color_for_node(self, node, depth):
         # Special case for free space
         if node.name == "Free Space":
-            return self.setting_color(
-                "free_space_color",
-                "#888888" if self.dark_mode else "#c0c0c0"
-            )
+            return self.setting_color("free_space_color", "#888888" if self.dark_mode else "#c0c0c0")
 
         # Directories: check dir_color custom first
         if node.is_dir:
@@ -162,14 +189,11 @@ class ActionsMixin:
             return f"#{255:02x}{base:02x}{120:02x}"
 
     def access_denied_color(self):
-        return self.setting_color(
-            "access_denied_color",
-            "#6f4b4b" if self.dark_mode else "#d8b3b3"
-        )
+        return self.setting_color("access_denied_color", "#6f4b4b" if self.dark_mode else "#d8b3b3")
 
     def dim_color(self, hex_color):
         """Darken a hex color by 50% for search dimming effect."""
-        hex_color = hex_color.lstrip('#')
+        hex_color = hex_color.lstrip("#")
         if len(hex_color) != 6:
             return self.setting_color("invalid_color", "#888888")
         try:
@@ -199,9 +223,7 @@ class ActionsMixin:
                 self.add_free_space_node()
             else:
                 self.log_message(
-                    "Free space visualization is only available at the drive root level.",
-                    "INFO",
-                    show_log=True
+                    "Free space visualization is only available at the drive root level.", "INFO", show_log=True
                 )
         else:
             self.free_space_button.config(text="Free Space (OFF)")
@@ -223,11 +245,12 @@ class ActionsMixin:
                 return  # Already added
         # Add free space node
         try:
-            if hasattr(os, 'statvfs'):
+            if hasattr(os, "statvfs"):
                 stat = os.statvfs(self.root_node.path)
                 free = stat.f_bavail * stat.f_frsize
             else:
                 import ctypes
+
                 free_bytes = ctypes.c_ulonglong(0)
                 total_bytes = ctypes.c_ulonglong(0)
                 ctypes.windll.kernel32.GetDiskFreeSpaceExW(
@@ -363,11 +386,7 @@ class ActionsMixin:
         def save_color():
             color = color_var.get().strip()
             if color and not self.normalize_color(color):
-                self.log_message(
-                    "Invalid color. Use a hex color like #ff0000 or R,G,B values.",
-                    "ERROR",
-                    show_log=True
-                )
+                self.log_message("Invalid color. Use a hex color like #ff0000 or R,G,B values.", "ERROR", show_log=True)
                 return
             if is_dir:
                 self.settings["dir_color"] = color
@@ -423,7 +442,7 @@ class ActionsMixin:
             if sys.platform.startswith("win"):
                 # Open the containing folder
                 folder = node.path if os.path.isdir(node.path) else os.path.dirname(node.path)
-                os.startfile(folder, 'explore')
+                os.startfile(folder, "explore")
             elif sys.platform == "darwin":
                 subprocess.run(["open", node.path], check=False)
             else:
@@ -441,10 +460,7 @@ class ActionsMixin:
             self.log_message("Delete command is disabled in settings.", "INFO", show_log=True)
             return
 
-        confirm = messagebox.askyesno(
-            "Delete",
-            f"Delete this item?\n\n{node.path}"
-        )
+        confirm = messagebox.askyesno("Delete", f"Delete this item?\n\n{node.path}")
 
         if not confirm:
             return
@@ -452,6 +468,7 @@ class ActionsMixin:
         try:
             if node.is_dir:
                 import shutil
+
                 shutil.rmtree(node.path)
             else:
                 os.remove(node.path)
@@ -468,12 +485,13 @@ class ActionsMixin:
             self.log_message("No folder scanned yet.", "INFO", show_log=True)
             return
         try:
-            stat = os.statvfs(self.root_node.path) if hasattr(os, 'statvfs') else None
+            stat = os.statvfs(self.root_node.path) if hasattr(os, "statvfs") else None
             if stat:
                 free = stat.f_bavail * stat.f_frsize
                 total = stat.f_blocks * stat.f_frsize
             else:
                 import ctypes
+
                 free_bytes = ctypes.c_ulonglong(0)
                 total_bytes = ctypes.c_ulonglong(0)
                 ctypes.windll.kernel32.GetDiskFreeSpaceExW(
@@ -487,7 +505,7 @@ class ActionsMixin:
                 f"Total: {human_size(total)}\n"
                 f"Used: {human_size(total - free)}",
                 "INFO",
-                show_log=True
+                show_log=True,
             )
         except Exception as e:
             self.log_message(f"Could not get free space: {e}", "ERROR", show_log=True)
@@ -501,7 +519,7 @@ class ActionsMixin:
         filename = filedialog.asksaveasfilename(
             title="Save treemap as SVG or PNG",
             defaultextension=".svg",
-            filetypes=[("SVG files", "*.svg"), ("PNG files", "*.png"), ("All files", "*.*")]
+            filetypes=[("SVG files", "*.svg"), ("PNG files", "*.png"), ("All files", "*.*")],
         )
         if not filename:
             return
@@ -511,9 +529,12 @@ class ActionsMixin:
         if want_png:
             try:
                 from PIL import Image, ImageDraw, ImageFont
+
                 use_png = True
             except ImportError:
-                self.log_message("PNG export requires Pillow (pip install pillow). Falling back to SVG.", "INFO", show_log=True)
+                self.log_message(
+                    "PNG export requires Pillow (pip install pillow). Falling back to SVG.", "INFO", show_log=True
+                )
                 filename = filename[:-4] + ".svg"
 
         try:
@@ -536,6 +557,7 @@ class ActionsMixin:
 
                 # Get canvas background color
                 bg = self.canvas.cget("bg") or "#f0f0f0"
+
                 def hex_to_rgb(c):
                     if c and c.startswith("#") and len(c) >= 7:
                         try:
@@ -603,7 +625,7 @@ class ActionsMixin:
             svg_lines.append('<svg xmlns="http://www.w3.org/2000/svg" version="1.1"')
             svg_lines.append(f'      width="{width}" height="{height}"')
             svg_lines.append(f'      viewBox="0 0 {width} {height}">')
-            svg_lines.append('')
+            svg_lines.append("")
 
             # Draw rectangles first
             for item in items:
@@ -617,7 +639,7 @@ class ActionsMixin:
                             stroke_w = int(float(width_val)) if width_val else 1
                         except ValueError:
                             stroke_w = 1
-                        svg_lines.append(f'  <rect x="{x1}" y="{y1}" width="{x2-x1}" height="{y2-y1}"')
+                        svg_lines.append(f'  <rect x="{x1}" y="{y1}" width="{x2 - x1}" height="{y2 - y1}"')
                         svg_lines.append(f'        fill="{fill}" stroke="{outline}" stroke-width="{stroke_w}"/>')
                 except tk.TclError:
                     pass
@@ -629,7 +651,9 @@ class ActionsMixin:
                         x, y = self.canvas.coords(item)
                         text = self.canvas.itemcget(item, "text")
                         # Escape special XML characters
-                        text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+                        text = (
+                            text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+                        )
                         fill = self.canvas.itemcget(item, "fill")
                         font_str = self.canvas.itemcget(item, "font")
                         font_parts = font_str.split()
@@ -651,10 +675,10 @@ class ActionsMixin:
                 except (tk.TclError, ValueError):
                     pass
 
-            svg_lines.append('</svg>')
+            svg_lines.append("</svg>")
 
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(svg_lines))
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write("\n".join(svg_lines))
 
             self.log_message(f"Treemap exported successfully to: {filename}", "INFO", show_log=True)
 
@@ -682,22 +706,20 @@ class ActionsMixin:
 
         body_frame = ttk.Frame(main_frame)
         body_frame.pack(fill="both", expand=True)
-        canvas_bg = self.setting_color("dark_window_bg", "#0f0f0f") if self.dark_mode else self.setting_color("light_window_bg", "#f0f0f0")
+        canvas_bg = (
+            self.setting_color("dark_window_bg", "#0f0f0f")
+            if self.dark_mode
+            else self.setting_color("light_window_bg", "#f0f0f0")
+        )
         canvas = tk.Canvas(body_frame, bg=canvas_bg, highlightthickness=0)
         scrollbar = ttk.Scrollbar(body_frame, orient="vertical", command=canvas.yview)
         body_frame.columnconfigure(0, weight=1)
         body_frame.columnconfigure(1, weight=0)
         body_frame.rowconfigure(0, weight=1)
         content = ttk.Frame(canvas)
-        content.bind(
-            "<Configure>",
-            lambda event: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        content.bind("<Configure>", lambda event: canvas.configure(scrollregion=canvas.bbox("all")))
         content_window = canvas.create_window((0, 0), window=content, anchor="nw")
-        canvas.bind(
-            "<Configure>",
-            lambda event: canvas.itemconfigure(content_window, width=event.width)
-        )
+        canvas.bind("<Configure>", lambda event: canvas.itemconfigure(content_window, width=event.width))
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
@@ -784,7 +806,11 @@ class ActionsMixin:
                 self.settings[key] = var.get().strip()
             self.save_settings()
             self.apply_theme()
-            updated_canvas_bg = self.setting_color("dark_window_bg", "#0f0f0f") if self.dark_mode else self.setting_color("light_window_bg", "#f0f0f0")
+            updated_canvas_bg = (
+                self.setting_color("dark_window_bg", "#0f0f0f")
+                if self.dark_mode
+                else self.setting_color("light_window_bg", "#f0f0f0")
+            )
             colors_win.configure(bg=updated_canvas_bg)
             canvas.configure(bg=updated_canvas_bg)
             self._style_widget_tree(colors_win)
@@ -864,7 +890,7 @@ class ActionsMixin:
                 update_preview(current_color if current_color else "#ffffff")
 
         listbox.bind("<<ListboxSelect>>", on_category_select)
-        
+
         # Live preview while typing
         color_var.trace_add("write", lambda *args: update_preview(color_var.get()))
 
@@ -875,7 +901,7 @@ class ActionsMixin:
                 return
             cat = categories[selection[0]]
             color_val = color_var.get().strip()
-            if color_val and not (color_val.startswith('#') and len(color_val) == 7):
+            if color_val and not (color_val.startswith("#") and len(color_val) == 7):
                 self.log_message("Invalid color. Color must be a hex color like #ff0000.", "ERROR", show_log=True)
                 return
             if "file_type_colors" not in self.settings:
@@ -970,10 +996,14 @@ class ActionsMixin:
         name_entry.grid(row=0, column=1, sticky="ew", pady=2, padx=(5, 0))
 
         name_case_var = tk.BooleanVar()
-        ttk.Checkbutton(name_frame, text="Case sensitive", variable=name_case_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=2)
+        ttk.Checkbutton(name_frame, text="Case sensitive", variable=name_case_var).grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=2
+        )
 
         regex_var = tk.BooleanVar()
-        ttk.Checkbutton(name_frame, text="Regular expression", variable=regex_var).grid(row=2, column=0, columnspan=2, sticky="w", pady=2)
+        ttk.Checkbutton(name_frame, text="Regular expression", variable=regex_var).grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=2
+        )
 
         # File type filter
         type_frame = ttk.LabelFrame(basic_frame, text="File Type", padding="5")
@@ -982,10 +1012,14 @@ class ActionsMixin:
         ttk.Label(type_frame, text="Extensions (comma-separated):").grid(row=0, column=0, sticky="w", pady=2)
         type_entry = ttk.Entry(type_frame, width=30)
         type_entry.grid(row=0, column=1, sticky="ew", pady=2, padx=(5, 0))
-        ttk.Label(type_frame, text="e.g., .txt,.pdf,.docx").grid(row=1, column=0, columnspan=2, sticky="w", pady=2, padx=(15, 0))
+        ttk.Label(type_frame, text="e.g., .txt,.pdf,.docx").grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=2, padx=(15, 0)
+        )
 
         type_exclude_var = tk.BooleanVar()
-        ttk.Checkbutton(type_frame, text="Exclude these types", variable=type_exclude_var).grid(row=2, column=0, columnspan=2, sticky="w", pady=2)
+        ttk.Checkbutton(type_frame, text="Exclude these types", variable=type_exclude_var).grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=2
+        )
 
         # Size Filters Tab
         size_frame = ttk.Frame(notebook)
@@ -997,7 +1031,9 @@ class ActionsMixin:
         ttk.Label(size_filter_frame, text="Minimum size:").grid(row=0, column=0, sticky="w", pady=2)
         min_size_entry = ttk.Entry(size_filter_frame, width=15)
         min_size_entry.grid(row=0, column=1, sticky="w", pady=2, padx=(5, 0))
-        ttk.Label(size_filter_frame, text="(e.g., 1MB, 500KB, 100)").grid(row=0, column=2, sticky="w", pady=2, padx=(5, 0))
+        ttk.Label(size_filter_frame, text="(e.g., 1MB, 500KB, 100)").grid(
+            row=0, column=2, sticky="w", pady=2, padx=(5, 0)
+        )
 
         ttk.Label(size_filter_frame, text="Maximum size:").grid(row=1, column=0, sticky="w", pady=2)
         max_size_entry = ttk.Entry(size_filter_frame, width=15)
@@ -1036,8 +1072,12 @@ class ActionsMixin:
         logic_filter_frame.pack(fill="x", pady=(0, 5))
 
         logic_var = tk.StringVar(value="AND")
-        ttk.Radiobutton(logic_filter_frame, text="AND (all conditions must match)", variable=logic_var, value="AND").pack(anchor="w", pady=2)
-        ttk.Radiobutton(logic_filter_frame, text="OR (any condition can match)", variable=logic_var, value="OR").pack(anchor="w", pady=2)
+        ttk.Radiobutton(
+            logic_filter_frame, text="AND (all conditions must match)", variable=logic_var, value="AND"
+        ).pack(anchor="w", pady=2)
+        ttk.Radiobutton(logic_filter_frame, text="OR (any condition can match)", variable=logic_var, value="OR").pack(
+            anchor="w", pady=2
+        )
 
         # Results preview
         results_frame = ttk.LabelFrame(main_frame, text="Search Results", padding="5")
@@ -1061,17 +1101,17 @@ class ActionsMixin:
 
             # Collect filter criteria
             filters = {
-                'name': name_entry.get().strip(),
-                'case_sensitive': name_case_var.get(),
-                'regex': regex_var.get(),
-                'extensions': [ext.strip().lstrip('.') for ext in type_entry.get().split(',') if ext.strip()],
-                'exclude_types': type_exclude_var.get(),
-                'min_size': min_size_entry.get().strip(),
-                'max_size': max_size_entry.get().strip(),
-                'days': date_days_entry.get().strip(),
-                'files_only': file_only_var.get(),
-                'dirs_only': dir_only_var.get(),
-                'logic': logic_var.get()
+                "name": name_entry.get().strip(),
+                "case_sensitive": name_case_var.get(),
+                "regex": regex_var.get(),
+                "extensions": [ext.strip().lstrip(".") for ext in type_entry.get().split(",") if ext.strip()],
+                "exclude_types": type_exclude_var.get(),
+                "min_size": min_size_entry.get().strip(),
+                "max_size": max_size_entry.get().strip(),
+                "days": date_days_entry.get().strip(),
+                "files_only": file_only_var.get(),
+                "dirs_only": dir_only_var.get(),
+                "logic": logic_var.get(),
             }
 
             # Apply filters and count matches
@@ -1109,17 +1149,17 @@ class ActionsMixin:
                 return
 
             filters = {
-                'name': name_entry.get().strip(),
-                'case_sensitive': name_case_var.get(),
-                'regex': regex_var.get(),
-                'extensions': [ext.strip().lstrip('.') for ext in type_entry.get().split(',') if ext.strip()],
-                'exclude_types': type_exclude_var.get(),
-                'min_size': min_size_entry.get().strip(),
-                'max_size': max_size_entry.get().strip(),
-                'days': date_days_entry.get().strip(),
-                'files_only': file_only_var.get(),
-                'dirs_only': dir_only_var.get(),
-                'logic': logic_var.get()
+                "name": name_entry.get().strip(),
+                "case_sensitive": name_case_var.get(),
+                "regex": regex_var.get(),
+                "extensions": [ext.strip().lstrip(".") for ext in type_entry.get().split(",") if ext.strip()],
+                "exclude_types": type_exclude_var.get(),
+                "min_size": min_size_entry.get().strip(),
+                "max_size": max_size_entry.get().strip(),
+                "days": date_days_entry.get().strip(),
+                "files_only": file_only_var.get(),
+                "dirs_only": dir_only_var.get(),
+                "logic": logic_var.get(),
             }
 
             matches = self._apply_advanced_filters(self.current_node, filters)
@@ -1165,47 +1205,48 @@ class ActionsMixin:
 
             # Name/regex filter
             name_match = True
-            if filters['name']:
-                if filters['regex']:
+            if filters["name"]:
+                if filters["regex"]:
                     try:
                         import re
-                        pattern = filters['name']
-                        if not filters['case_sensitive']:
+
+                        pattern = filters["name"]
+                        if not filters["case_sensitive"]:
                             pattern = "(?i)" + pattern
                         name_match = bool(re.search(pattern, node.name))
                     except re.error:
                         name_match = False  # Invalid regex
                 else:
-                    haystack = node.name if filters['case_sensitive'] else node.name.lower()
-                    needle = filters['name'] if filters['case_sensitive'] else filters['name'].lower()
+                    haystack = node.name if filters["case_sensitive"] else node.name.lower()
+                    needle = filters["name"] if filters["case_sensitive"] else filters["name"].lower()
                     name_match = needle in haystack
 
             # Extension filter
             ext_match = True
-            if filters['extensions']:
+            if filters["extensions"]:
                 if node.is_dir:
-                    ext_match = not filters['exclude_types']  # Directories match if not excluding
+                    ext_match = not filters["exclude_types"]  # Directories match if not excluding
                 else:
-                    node_ext = os.path.splitext(node.name)[1].lstrip('.').lower()
-                    has_ext = node_ext in [ext.lower() for ext in filters['extensions']]
-                    ext_match = has_ext if not filters['exclude_types'] else not has_ext
+                    node_ext = os.path.splitext(node.name)[1].lstrip(".").lower()
+                    has_ext = node_ext in [ext.lower() for ext in filters["extensions"]]
+                    ext_match = has_ext if not filters["exclude_types"] else not has_ext
 
             # Size filters
             size_match = True
-            if filters['min_size'] or filters['max_size']:
+            if filters["min_size"] or filters["max_size"]:
                 try:
-                    min_bytes = self.parse_size(filters['min_size']) if filters['min_size'] else 0
-                    max_bytes = self.parse_size(filters['max_size']) if filters['max_size'] else float('inf')
+                    min_bytes = self.parse_size(filters["min_size"]) if filters["min_size"] else 0
+                    max_bytes = self.parse_size(filters["max_size"]) if filters["max_size"] else float("inf")
                     size_match = min_bytes <= node.size <= max_bytes
                 except (TypeError, ValueError):
                     size_match = True  # Invalid size specification
 
             # Date filter
             date_match = True
-            if filters['days']:
+            if filters["days"]:
                 try:
-                    days = int(filters['days'])
-                    if hasattr(node, 'modified_time') and node.modified_time:
+                    days = int(filters["days"])
+                    if hasattr(node, "modified_time") and node.modified_time:
                         age_days = (time.time() - node.modified_time) / 86400
                         date_match = age_days <= days
                     else:
@@ -1215,15 +1256,15 @@ class ActionsMixin:
 
             # Type filter
             type_match = True
-            if filters['files_only'] and filters['dirs_only']:
+            if filters["files_only"] and filters["dirs_only"]:
                 type_match = False  # Can't be both
-            elif filters['files_only']:
+            elif filters["files_only"]:
                 type_match = not node.is_dir
-            elif filters['dirs_only']:
+            elif filters["dirs_only"]:
                 type_match = node.is_dir
 
             # Combine with logic
-            if filters['logic'] == 'AND':
+            if filters["logic"] == "AND":
                 return name_match and ext_match and size_match and date_match and type_match
             else:  # OR
                 return name_match or ext_match or size_match or date_match or type_match
@@ -1251,7 +1292,7 @@ class ActionsMixin:
         for unit, multiplier in units.items():
             if size_str.endswith(unit.upper()):
                 try:
-                    num = float(size_str[:-len(unit)])
+                    num = float(size_str[: -len(unit)])
                     return int(num * multiplier)
                 except ValueError:
                     continue
@@ -1377,6 +1418,7 @@ class ActionsMixin:
         # Click to browse
         def browse(event, p=path):
             self.switch_to_bookmark(p)
+
         card.bind("<Button-1>", browse)
         label.bind("<Button-1>", browse)
 

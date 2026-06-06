@@ -132,8 +132,7 @@ class ScanMixin:
         except PermissionError:
             self.mark_access_denied(node)
             self.log_from_worker(
-                f"Permission denied quick-browsing {path}. Using {human_size(node.size)} placeholder.",
-                "WARNING"
+                f"Permission denied quick-browsing {path}. Using {human_size(node.size)} placeholder.", "WARNING"
             )
             return node
         except OSError:
@@ -172,15 +171,17 @@ class ScanMixin:
             eta = elapsed / progress * (1 - progress)
             eta_str = f", {eta:.1f}s ETA"
 
-        self.after(0, lambda: (
-            self.progress.config(value=progress * 100),
-            self.progress_label.config(
-                text=(
-                    f"Scanning: {self.nodes_scanned} / {self.total_items} "
-                    f"items ({elapsed:.1f}s elapsed{eta_str})"
-                )
-            )
-        ))
+        self.after(
+            0,
+            lambda: (
+                self.progress.config(value=progress * 100),
+                self.progress_label.config(
+                    text=(
+                        f"Scanning: {self.nodes_scanned} / {self.total_items} items ({elapsed:.1f}s elapsed{eta_str})"
+                    )
+                ),
+            ),
+        )
 
     def increment_nodes_scanned(self, amount=1):
         with self._nodes_scanned_lock:
@@ -229,8 +230,7 @@ class ScanMixin:
         except PermissionError:
             fallback_size = self.mark_access_denied(node)
             self.log_from_worker(
-                f"Permission denied scanning {path}. Using {human_size(fallback_size)} placeholder.",
-                "WARNING"
+                f"Permission denied scanning {path}. Using {human_size(fallback_size)} placeholder.", "WARNING"
             )
             return node, child_dirs
         except OSError as e:
@@ -284,9 +284,7 @@ class ScanMixin:
         all_dirs = []
 
         with ThreadPoolExecutor(max_workers=max_threads) as executor:
-            pending = {
-                executor.submit(self.scan_directory_level, path): None
-            }
+            pending = {executor.submit(self.scan_directory_level, path): None}
 
             while pending and not self.scan_aborted:
                 done, _ = wait(pending, return_when=FIRST_COMPLETED)
@@ -307,10 +305,7 @@ class ScanMixin:
                     for child_path in child_dirs:
                         if self.scan_aborted:
                             break
-                        pending[executor.submit(
-                            self.scan_directory_level,
-                            child_path
-                        )] = node
+                        pending[executor.submit(self.scan_directory_level, child_path)] = node
 
         if self.scan_aborted:
             for future in pending:
@@ -327,7 +322,7 @@ class ScanMixin:
         self.progress_frame.pack_forget()
         self.progress["value"] = 0
         self.progress_label.config(text="")
-        
+
         if self.scan_aborted:
             self.status.config(text="Scan cancelled")
             self.canvas.delete("all")
@@ -346,11 +341,12 @@ class ScanMixin:
             if drive and os.path.basename(self.root_node.path) == "":
                 # It's a drive root like "C:\" or "W:\"
                 try:
-                    if hasattr(os, 'statvfs'):
+                    if hasattr(os, "statvfs"):
                         stat = os.statvfs(self.root_node.path)
                         free = stat.f_bavail * stat.f_frsize
                     else:
                         import ctypes
+
                         free_bytes = ctypes.c_ulonglong(0)
                         total_bytes = ctypes.c_ulonglong(0)
                         ctypes.windll.kernel32.GetDiskFreeSpaceExW(
@@ -366,8 +362,6 @@ class ScanMixin:
                 except Exception:
                     pass  # Ignore errors, don't add free space
 
-
-
         self.animate_zoom(old_current, node)
         if getattr(self, "access_denied_count", 0):
             self.log_message(
@@ -375,13 +369,13 @@ class ScanMixin:
                 f"{'s' if self.access_denied_count != 1 else ''}. "
                 "They are shown as access-denied placeholders.",
                 "WARNING",
-                show_log=False
+                show_log=False,
             )
         else:
             self.log_message("Scan completed with no inaccessible folders.", "INFO")
 
         # Store scan data for bookmarks
-        if self.root_node and self.root_node.path in getattr(self, 'bookmarks', {}):
+        if self.root_node and self.root_node.path in getattr(self, "bookmarks", {}):
             self.bookmarks[self.root_node.path] = self.root_node
 
     def rescan(self):

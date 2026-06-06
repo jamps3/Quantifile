@@ -45,8 +45,6 @@ def _squarify(nodes, x, y, w, h, total, result):
         current_y = y
         for node in row:
             node_h = max(1, row_height * node.size / row_total) if row_total > 0 else 1
-            if node_h < 1:
-                node_h = 1
             # Ensure we don't exceed remaining height
             if current_y + node_h > y + h:
                 node_h = max(1, y + h - current_y)
@@ -56,8 +54,7 @@ def _squarify(nodes, x, y, w, h, total, result):
         # Remaining space for rest
         remaining_h = max(0, h - (current_y - y))
         if rest and remaining_h > 1:
-            _squarify(rest, x, current_y, w, remaining_h,
-                     total - row_total, result)
+            _squarify(rest, x, current_y, w, remaining_h, total - row_total, result)
     else:
         # Lay out row as a row (fixed height, split width)
         row_width = max(1, w * row_total / total)
@@ -66,8 +63,6 @@ def _squarify(nodes, x, y, w, h, total, result):
         current_x = x
         for node in row:
             node_w = max(1, row_width * node.size / row_total) if row_total > 0 else 1
-            if node_w < 1:
-                node_w = 1
             # Ensure we don't exceed remaining width
             if current_x + node_w > x + w:
                 node_w = max(1, x + w - current_x)
@@ -77,8 +72,7 @@ def _squarify(nodes, x, y, w, h, total, result):
         # Remaining space for rest
         remaining_w = max(0, w - (current_x - x))
         if rest and remaining_w > 1:
-            _squarify(rest, current_x, y, remaining_w, h,
-                     total - row_total, result)
+            _squarify(rest, current_x, y, remaining_w, h, total - row_total, result)
 
 
 def _pick_row(nodes, total, space_len):
@@ -93,7 +87,7 @@ def _pick_row(nodes, total, space_len):
         return nodes[:1], nodes[1:]
 
     best_row = []
-    best_worst_ratio = float('inf')
+    best_worst_ratio = float("inf")
     best_remainder = []
 
     # Try different row sizes, find best worst-case aspect ratio

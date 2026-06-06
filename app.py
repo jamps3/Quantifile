@@ -48,16 +48,20 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.search_entry.pack(side="left", padx=(0, 4))
 
         self.search_type_var = tk.StringVar(value="name")
-        ttk.Radiobutton(search_frame, text="Name", variable=self.search_type_var, value="name",
-                        command=self.apply_search).pack(side="left", padx=2)
-        ttk.Radiobutton(search_frame, text="Size ≥ ", variable=self.search_type_var, value="size",
-                        command=self.apply_search).pack(side="left", padx=2)
+        ttk.Radiobutton(
+            search_frame, text="Name", variable=self.search_type_var, value="name", command=self.apply_search
+        ).pack(side="left", padx=2)
+        ttk.Radiobutton(
+            search_frame, text="Size ≥ ", variable=self.search_type_var, value="size", command=self.apply_search
+        ).pack(side="left", padx=2)
 
         self.min_size_var = tk.StringVar(value="1MB")
         self.size_entry = ttk.Entry(search_frame, textvariable=self.min_size_var, width=8)
         self.size_entry.pack(side="left", padx=(0, 4))
         self.size_entry.bind("<Return>", lambda e: self.apply_search())
-        self.size_entry.bind("<KeyRelease>", lambda e: self.apply_search() if e.keysym in ("Return", "KP_Enter") else None)
+        self.size_entry.bind(
+            "<KeyRelease>", lambda e: self.apply_search() if e.keysym in ("Return", "KP_Enter") else None
+        )
 
         ttk.Button(search_frame, text="×", width=2, command=self.clear_search).pack(side="left", padx=2)
         ttk.Button(search_frame, text="Advanced", command=self.show_advanced_search).pack(side="left", padx=(10, 2))
@@ -82,9 +86,15 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         bookmarks_toolbar = ttk.Frame(self.bookmarks_tab)
         bookmarks_toolbar.pack(fill="x", padx=4, pady=4)
 
-        ttk.Button(bookmarks_toolbar, text="Add Current", command=self.add_current_to_bookmarks).pack(side="left", padx=2)
-        ttk.Button(bookmarks_toolbar, text="Remove Selected", command=self.remove_selected_bookmark).pack(side="left", padx=2)
-        ttk.Button(bookmarks_toolbar, text="Browse Selected", command=self.browse_selected_bookmark).pack(side="left", padx=2)
+        ttk.Button(bookmarks_toolbar, text="Add Current", command=self.add_current_to_bookmarks).pack(
+            side="left", padx=2
+        )
+        ttk.Button(bookmarks_toolbar, text="Remove Selected", command=self.remove_selected_bookmark).pack(
+            side="left", padx=2
+        )
+        ttk.Button(bookmarks_toolbar, text="Browse Selected", command=self.browse_selected_bookmark).pack(
+            side="left", padx=2
+        )
 
         # Card stack container for tab
         bookmarks_frame = ttk.Frame(self.bookmarks_tab)
@@ -99,22 +109,31 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.bookmarks_tab_canvas.pack(side="left", fill="both", expand=True)
 
         self.bookmarks_tab_canvas.create_window((0, 0), window=self.bookmarks_tab_cards, anchor="nw")
-        self.bookmarks_tab_cards.bind("<Configure>", lambda e: self.bookmarks_tab_canvas.configure(scrollregion=self.bookmarks_tab_canvas.bbox("all")))
+        self.bookmarks_tab_cards.bind(
+            "<Configure>",
+            lambda e: self.bookmarks_tab_canvas.configure(scrollregion=self.bookmarks_tab_canvas.bbox("all")),
+        )
 
     def create_bookmarks_panel_ui(self):
         # Bookmarks panel toolbar
         bookmarks_toolbar = ttk.Frame(self.bookmarks_panel)
         bookmarks_toolbar.pack(fill="x", padx=4, pady=4)
 
-        ttk.Button(bookmarks_toolbar, text="Add Current", command=self.add_current_to_bookmarks).pack(side="left", padx=2)
-        ttk.Button(bookmarks_toolbar, text="Remove Selected", command=self.remove_selected_bookmark).pack(side="left", padx=2)
+        ttk.Button(bookmarks_toolbar, text="Add Current", command=self.add_current_to_bookmarks).pack(
+            side="left", padx=2
+        )
+        ttk.Button(bookmarks_toolbar, text="Remove Selected", command=self.remove_selected_bookmark).pack(
+            side="left", padx=2
+        )
 
         # Card stack container for panel
         bookmarks_frame = ttk.Frame(self.bookmarks_panel)
         bookmarks_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
 
         self.bookmarks_panel_canvas = tk.Canvas(bookmarks_frame, highlightthickness=0)
-        bookmarks_scrollbar = ttk.Scrollbar(bookmarks_frame, orient="vertical", command=self.bookmarks_panel_canvas.yview)
+        bookmarks_scrollbar = ttk.Scrollbar(
+            bookmarks_frame, orient="vertical", command=self.bookmarks_panel_canvas.yview
+        )
         self.bookmarks_panel_cards = ttk.Frame(self.bookmarks_panel_canvas)
 
         self.bookmarks_panel_canvas.configure(yscrollcommand=bookmarks_scrollbar.set)
@@ -122,10 +141,14 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.bookmarks_panel_canvas.pack(side="left", fill="both", expand=True)
 
         self.bookmarks_panel_canvas.create_window((0, 0), window=self.bookmarks_panel_cards, anchor="nw")
-        self.bookmarks_panel_cards.bind("<Configure>", lambda e: self.bookmarks_panel_canvas.configure(scrollregion=self.bookmarks_panel_canvas.bbox("all")))
+        self.bookmarks_panel_cards.bind(
+            "<Configure>",
+            lambda e: self.bookmarks_panel_canvas.configure(scrollregion=self.bookmarks_panel_canvas.bbox("all")),
+        )
 
     def truncate_text(self, text):
         import tkinter.font as tkfont
+
         # Get available width for text (window width minus padding)
         available_width = max(100, self.winfo_width() - 20)  # Minimum 100
         font_str = self.status.cget("font")
@@ -160,7 +183,9 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         self.free_space_button = ttk.Button(toolbar, text="Free Space (OFF)", command=self.toggle_free_space)
         self.free_space_button.pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Export", command=self.export_svg).pack(side="left", padx=4, pady=4)
-        self.bookmarks_toggle_button = ttk.Button(toolbar, text="Bookmarks (HIDDEN)", command=self.toggle_bookmarks_panel)
+        self.bookmarks_toggle_button = ttk.Button(
+            toolbar, text="Bookmarks (HIDDEN)", command=self.toggle_bookmarks_panel
+        )
         self.bookmarks_toggle_button.pack(side="left", padx=4, pady=4)
         ttk.Button(toolbar, text="Settings", command=self.show_settings).pack(side="right", padx=4, pady=4)
         ttk.Button(toolbar, text="About", command=self.show_about).pack(side="right", padx=4, pady=4)
@@ -284,5 +309,3 @@ class Quantifile(SettingsMixin, ScanMixin, RenderMixin, ActionsMixin, tk.Tk):
         if show_log is None:
             show_log = level == "ERROR"
         self.after(0, lambda: self.log_message(message, level, show_log))
-
-

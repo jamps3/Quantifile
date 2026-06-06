@@ -58,9 +58,7 @@ def patch_version_in_text(text: str, new_version: str) -> str:
     # "Quantifile v1.0" or "Quantifile v1.0.0"
     text = re.sub(r"Quantifile v[\d.]+", f"Quantifile v{new_version}", text)
     # Download filename
-    text = re.sub(
-        r"Quantifile-v[\d.]+-Windows\.zip", f"Quantifile-v{new_version}-Windows.zip", text
-    )
+    text = re.sub(r"Quantifile-v[\d.]+-Windows\.zip", f"Quantifile-v{new_version}-Windows.zip", text)
     # install.bat style "v1.0"
     text = re.sub(r"\bv[\d.]+\b", f"v{new_version}", text)
     return text
@@ -78,9 +76,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build Quantifile release")
     parser.add_argument("--major", action="store_true", help="Bump major version")
     parser.add_argument("--minor", action="store_true", help="Bump minor version")
-    parser.add_argument(
-        "--no-increment", action="store_true", help="Build without bumping version"
-    )
+    parser.add_argument("--no-increment", action="store_true", help="Build without bumping version")
     parser.add_argument("--zip", action="store_true", help="Create versioned release zip")
     args = parser.parse_args()
 
