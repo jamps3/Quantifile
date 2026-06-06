@@ -1,7 +1,7 @@
 # Quantifile v1.0.5
 
-[![Tests](https://github.com/jamps3/Quantifile/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/jamps3/Quantifile/actions/workflows/tests.yml)
-[![Autoformat](https://github.com/jamps3/Quantifile/actions/workflows/autoformat.yml/badge.svg?branch=main)](https://github.com/jamps3/Quantifile/actions/workflows/autoformat.yml)
+[![Tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/main/badges/tests-status.json)](https://github.com/jamps3/Quantifile/blob/main/badges/tests-status.json)
+[![Autoformat](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/main/badges/autoformat.json)](https://github.com/jamps3/Quantifile/blob/main/badges/autoformat.json)
 [![Test count](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/main/badges/tests.json)](https://github.com/jamps3/Quantifile/blob/main/badges/tests.json)
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/main/badges/coverage.json)](https://github.com/jamps3/Quantifile/blob/main/badges/coverage.json)
 

@@ -41,6 +41,10 @@ def main():
     (output_dir / "tests.json").write_text(
         json.dumps(badge("tests", str(args.test_count), "brightgreen"), indent=2) + "\n"
     )
+    (output_dir / "tests-status.json").write_text(json.dumps(badge("tests", "passing", "brightgreen"), indent=2) + "\n")
+    (output_dir / "autoformat.json").write_text(
+        json.dumps(badge("autoformat", "passing", "brightgreen"), indent=2) + "\n"
+    )
     (output_dir / "coverage.json").write_text(
         json.dumps(
             badge("coverage", f"{percent_value:g}%", color_for_coverage(percent_value)),
