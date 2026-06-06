@@ -1,9 +1,9 @@
 # Quantifile v1.0.5
 
-[![Tests](https://img.shields.io/github/actions/workflow/status/jamps3/Quantifile/ci.yml?branch=main&label=tests)](https://github.com/jamps3/Quantifile/actions/workflows/ci.yml)
-[![Autoformat](https://img.shields.io/github/actions/workflow/status/jamps3/Quantifile/ci.yml?branch=main&label=autoformat)](https://github.com/jamps3/Quantifile/actions/workflows/ci.yml)
-[![Test count](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/badges/badges/tests.json)](https://github.com/jamps3/Quantifile/tree/badges)
-[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/badges/badges/coverage.json)](https://github.com/jamps3/Quantifile/tree/badges)
+[![Tests](https://github.com/jamps3/Quantifile/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/jamps3/Quantifile/actions/workflows/tests.yml)
+[![Autoformat](https://github.com/jamps3/Quantifile/actions/workflows/autoformat.yml/badge.svg?branch=main)](https://github.com/jamps3/Quantifile/actions/workflows/autoformat.yml)
+[![Test count](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/main/badges/tests.json)](https://github.com/jamps3/Quantifile/blob/main/badges/tests.json)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/main/badges/coverage.json)](https://github.com/jamps3/Quantifile/blob/main/badges/coverage.json)
 
 A disk space visualization tool inspired by the classic SpaceMonger application. This tool provides an interactive treemap visualization of directory contents, making it easy to identify large files and folders at a glance.
 
