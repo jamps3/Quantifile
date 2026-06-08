@@ -32,6 +32,7 @@ pip-delete-this-directory.txt
 htmlcov/
 .tox/
 .nox/
+.tmp/
 .coverage
 .coverage.*
 .cache
@@ -52,6 +53,7 @@ test-results.xml
 # Environments
 .env
 .venv
+.uv-cache/
 env/
 venv/
 ENV/

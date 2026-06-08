@@ -2,11 +2,14 @@
     "typeCheckingMode": "basic",
     "exclude": [
         "**/__pycache__",
+        ".venv",
+        ".uv-cache",
         "build",
         "dist",
         "release"
     ],
     "reportAttributeAccessIssue": "none",
     "reportArgumentType": "none",
-    "reportCallIssue": "none"
+    "reportCallIssue": "none",
+    "reportMissingImports": "none"
 }

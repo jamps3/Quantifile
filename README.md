@@ -164,14 +164,15 @@ The workspace includes a `.vscode/launch.json` configuration for running `main.p
 Run these checks before committing code changes:
 
 ```bash
-python -m compileall -q .
-python -m pytest
-python -m ruff check .
-python -m ruff format --check .
-python -m pyright
+uv sync --group dev
+uv run python -m compileall -q actions_controller.py app.py build.py layout.py main.py models.py render_controller.py scan_controller.py scanner.py settings_controller.py scripts tests
+uv run python -m pytest
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
 ```
 
-Ruff and Pyright are development tools, not runtime dependencies. `pyrightconfig.json` is configured for this dynamic Tkinter/mixin codebase so editor diagnostics focus on actionable issues instead of mixin attribute false positives.
+Ruff, Pyright, pytest, and pytest-cov are uv-managed development tools, not runtime dependencies. `pyrightconfig.json` is configured for this dynamic Tkinter/mixin codebase so editor diagnostics focus on actionable issues instead of mixin attribute false positives.
 
 ### Data Model
 
