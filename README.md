@@ -58,10 +58,12 @@ No installation required — the application uses only Python standard library m
 
 A standalone Windows executable is available that doesn't require Python installation:
 
-- Download `Quantifile-v1.0.5-Windows.zip`
-- Extract the ZIP file
-- Run `Quantifile.exe` directly
-- Optional: Run `install.bat` for system-wide installation with desktop shortcut
+- [Download Quantifile v1.0.5 for Windows](https://github.com/jamps3/Quantifile/raw/refs/heads/main/release/Quantifile-v1.0.5.exe)
+- Run `Quantifile-v1.0.5.exe` directly.
+- [Browse release files](https://github.com/jamps3/Quantifile/tree/main/release) for available packages.
+
+Linux standalone packaging is being prepared and is not published yet. Linux
+users can currently run the source with Python 3 and Tkinter (`python3 main.py`).
 
 ## Usage
 
