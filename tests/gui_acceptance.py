@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT))
 Quantifile = importlib.import_module("app").Quantifile
 ImageGrab = importlib.import_module("PIL.ImageGrab")
 
-OUTPUT = Path(os.environ.get("QUANTIFILE_QA_OUTPUT", "/work/qa"))
+OUTPUT = Path(os.environ.get("QUANTIFILE_QA_OUTPUT", str(ROOT / "dist" / "gui-qa")))
 OUTPUT.mkdir(parents=True, exist_ok=True)
 
 
