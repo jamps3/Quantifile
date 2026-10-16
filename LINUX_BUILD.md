@@ -58,3 +58,30 @@ env LD_LIBRARY_PATH=/home/jamps/o/.build-tools/sysroot/usr/lib \
     TK_LIBRARY=/home/jamps/o/.build-tools/sysroot/usr/lib/tk8.6 \
     .venv/bin/python build_linux.py
 ```
+
+### Ubuntu 22.04 Compatibility, 2026-10-16
+
+The original CachyOS artifact failed on Ubuntu 22.04/glibc 2.35: its bundled
+libz.so.1 requires GLIBC_ABI_DT_RELR. Do not publish that artifact as a general
+Linux download.
+
+Rebuilt unmodified source commit b9c4628 inside a rootless Ubuntu Base 22.04.5
+environment (Python 3.10.12, glibc 2.35, PyInstaller 6.22.3). All 29 tests
+passed with 100% core coverage. The source GUI scanned the synthetic 1088-byte
+fixture, rendered a treemap and switched themes. The extracted Ubuntu binary
+created a visible X window and stayed running without stderr for five seconds.
+This is an older-userspace test sharing Kuu's kernel, not a separate VM or a
+full manual desktop acceptance test.
+
+Ubuntu artifact SHA256:
+0594f5eb412c9b1f7d8a39b3fbcba2addc6467e89574168efdece0fb07a1aed3
+
+On Kuu, the Ubuntu build is retained under
+/home/jamps/o/.build-tools/ubuntu2204/rootfs/work/Quantifile/dist/ubuntu2204/.
+No public release or upload was performed.
+
+The same Ubuntu artifact also remains running on CachyOS, but its older bundled
+Fontconfig reports parsing warnings against CachyOS's newer system font rules.
+Treat this as an unresolved cross-distribution packaging issue, not a clean
+CachyOS pass. Resolve font configuration/library compatibility before promoting
+the Ubuntu archive as the general Linux download.
