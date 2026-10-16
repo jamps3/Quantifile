@@ -62,8 +62,10 @@ A standalone Windows executable is available that doesn't require Python install
 - Run `Quantifile-v1.0.5.exe` directly.
 - [Browse release files](https://github.com/jamps3/Quantifile/tree/main/release) for available packages.
 
-Linux standalone packaging is being prepared and is not published yet. Linux
-users can currently run the source with Python 3 and Tkinter (`python3 main.py`).
+Linux standalone packaging is available through [build_linux.py](build_linux.py).
+See [Linux build instructions and compatibility notes](LINUX_BUILD.md).
+The Linux archive is not published yet. Linux users can also run the source
+with Python 3 and Tkinter (`python3 main.py`).
 
 ## Usage
 
