@@ -1,4 +1,4 @@
-# Quantifile v1.0.5
+# Quantifile v1.0.6
 
 [![Tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/main/badges/tests-status.json)](https://github.com/jamps3/Quantifile/blob/main/badges/tests-status.json)
 [![Autoformat](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jamps3/Quantifile/main/badges/autoformat.json)](https://github.com/jamps3/Quantifile/blob/main/badges/autoformat.json)
@@ -52,7 +52,7 @@ No installation required — the application uses only Python standard library m
 
 ### Requirements
 
-- Python 3.6 or higher
+- Python 3.9 or higher, with Tkinter
 
 ### Standalone Executable
 
@@ -64,8 +64,15 @@ A standalone Windows executable is available that doesn't require Python install
 
 Linux standalone packaging is available through [build_linux.py](build_linux.py).
 See [Linux build instructions and compatibility notes](LINUX_BUILD.md).
-The Linux archive is not published yet. Linux users can also run the source
-with Python 3 and Tkinter (`python3 main.py`).
+- [Download Quantifile v1.0.6 for Linux x86_64](https://github.com/jamps3/Quantifile/releases/download/v1.0.6/Quantifile-v1.0.6-linux-x86_64.tar.gz)
+- [Linux SHA256 checksum](https://github.com/jamps3/Quantifile/releases/download/v1.0.6/Quantifile-v1.0.6-linux-x86_64.tar.gz.sha256)
+
+Extract the complete archive and run `./Quantifile` from the extracted folder.
+Requires a graphical Linux desktop, glibc 2.35+ and system Fontconfig
+(`libfontconfig1` on Ubuntu/Debian). Built on Ubuntu 22.04 and tested there and
+on CachyOS. Other distributions have not been individually certified.
+The Windows download above remains version 1.0.5. Linux users can also run
+the source with Python 3 and Tkinter (`python3 main.py`).
 
 ## Usage
 

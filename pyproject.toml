@@ -1,6 +1,6 @@
 [project]
 name = "quantifile"
-version = "1.0.5"
+version = "1.0.6"
 description = "A Tkinter disk space visualization tool inspired by SpaceMonger."
 readme = "README.md"
 requires-python = ">=3.9"
